@@ -1,99 +1,31 @@
-<div class="min-h-screen bg-gray-50 py-8">
-  <div class="max-w-6xl mx-auto px-4">
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">{@tier_list.title}</h1>
-
-      <%= if @mode == :edit do %>
-        <div class="flex flex-col sm:flex-row gap-4 text-sm text-gray-600">
-          <div>
-            <span class="font-medium">Edit URL:</span>
-            <code class="bg-gray-100 px-2 py-1 rounded ml-1">
-              {url(~p"/edit/#{@tier_list.edit_token}")}
-            </code>
-          </div>
-          <div>
-            <span class="font-medium">View-only URL:</span>
-            <code class="bg-gray-100 px-2 py-1 rounded ml-1">
-              {url(~p"/view/#{@tier_list.view_token}")}
-            </code>
-          </div>
-        </div>
-      <% else %>
-        <p class="text-gray-600">View-only mode - Live updates enabled</p>
-      <% end %>
-    </div>
-    
+<div class="min-h-screen bg-gray-900 text-white">
+  <!-- Title - Big and Centered -->
+  <div class="text-center py-8">
+    <h1 class="text-6xl font-bold text-white mb-4">{@tier_list.title}</h1>
+  </div>
+  
 <!-- Drag and Drop Arena -->
-    <div id="tier-list" phx-hook="TierListDragDrop" class="space-y-4 mb-8">
-      <!-- Tiers -->
-      <%= for tier <- @tiers do %>
-        <div class="tier-row bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <!-- Tier Header -->
-          <div
-            class="tier-header px-4 py-3 flex items-center"
-            style={"background-color: #{tier.color}20; border-left: 4px solid #{tier.color}"}
-          >
-            <span class="text-lg font-bold text-gray-800">{tier.name}</span>
-          </div>
-          
-<!-- Tier Objects -->
-          <div
-            class="tier-objects min-h-[120px] p-4 flex flex-wrap gap-3"
-            data-drop-zone="true"
-            data-tier-id={tier.id}
-          >
-            <%= for object <- objects_for_tier(@objects, tier.id) do %>
-              <div
-                class="tier-object group relative bg-gray-50 rounded-lg p-2 cursor-move hover:shadow-md transition-shadow select-none"
-                data-draggable="true"
-                data-object-id={object.id}
-                draggable="true"
-              >
-                <img
-                  src={~p"/images/#{object.id}"}
-                  alt={object.name}
-                  class="object-image w-20 h-20 object-cover rounded"
-                  loading="lazy"
-                  draggable="false"
-                />
-                <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
-                  {object.name}
-                </div>
-
-                <%= if @mode == :edit do %>
-                  <div class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      phx-click="delete_object"
-                      phx-value-object_id={object.id}
-                      class="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
-      
-<!-- Holding Zone (treated as a special tier) -->
-      <div class="tier-row bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <!-- Holding Zone Header -->
-        <div class="tier-header px-4 py-3 flex items-center bg-gray-50 border-b border-gray-200">
-          <span class="text-lg font-bold text-gray-800">Objects</span>
+  <div id="tier-list" phx-hook="TierListDragDrop" class="px-4 space-y-2">
+    <!-- Tiers -->
+    <%= for tier <- @tiers do %>
+      <div
+        class="tier-row flex rounded-lg overflow-hidden shadow-lg"
+        style={"background-color: #{tier.color}"}
+      >
+        <!-- Tier Letter - Huge and on the Left -->
+        <div class="tier-header flex items-center justify-center w-32 min-h-[140px]">
+          <span class="text-8xl font-black text-white drop-shadow-lg">{tier.name}</span>
         </div>
         
-<!-- Holding Zone Objects -->
+<!-- Tier Objects -->
         <div
-          class="tier-objects min-h-[150px] p-4 flex flex-wrap gap-3"
+          class="tier-objects flex-1 min-h-[140px] p-4 flex flex-wrap gap-3 items-center"
           data-drop-zone="true"
-          data-tier-id=""
+          data-tier-id={tier.id}
         >
-          <%= for object <- unassigned_objects(@objects) do %>
+          <%= for object <- objects_for_tier(@objects, tier.id) do %>
             <div
-              class="tier-object group relative bg-gray-50 rounded-lg p-2 cursor-move hover:shadow-md transition-shadow select-none"
+              class="tier-object group relative bg-white/20 backdrop-blur-sm rounded-lg p-2 cursor-move hover:bg-white/30 transition-all select-none"
               data-draggable="true"
               data-object-id={object.id}
               draggable="true"
@@ -105,7 +37,7 @@
                 loading="lazy"
                 draggable="false"
               />
-              <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
+              <div class="object-name text-xs text-center mt-1 text-white font-medium truncate max-w-[80px] drop-shadow">
                 {object.name}
               </div>
 
@@ -114,7 +46,7 @@
                   <button
                     phx-click="delete_object"
                     phx-value-object_id={object.id}
-                    class="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                    class="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 shadow-lg"
                   >
                     ×
                   </button>
@@ -124,20 +56,69 @@
           <% end %>
         </div>
       </div>
-    </div>
+    <% end %>
     
-<!-- File Upload Section (separate from drag-drop) -->
-    <%= if @mode == :edit do %>
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-800">Add New Objects</h2>
+<!-- Holding Zone - Light Background -->
+    <div class="tier-row flex rounded-lg overflow-hidden shadow-lg bg-gray-100 mt-8">
+      <!-- Holding Zone Header -->
+      <div class="tier-header flex items-center justify-center w-32 min-h-[160px] bg-gray-200">
+        <span class="text-4xl font-black text-gray-700">Objects</span>
+      </div>
+      
+<!-- Holding Zone Objects -->
+      <div
+        class="tier-objects flex-1 min-h-[160px] p-4 flex flex-wrap gap-3 items-center bg-gray-50"
+        data-drop-zone="true"
+        data-tier-id=""
+      >
+        <%= for object <- unassigned_objects(@objects) do %>
+          <div
+            class="tier-object group relative bg-white rounded-lg p-2 cursor-move hover:shadow-md transition-shadow select-none border border-gray-200"
+            data-draggable="true"
+            data-object-id={object.id}
+            draggable="true"
+          >
+            <img
+              src={~p"/images/#{object.id}"}
+              alt={object.name}
+              class="object-image w-20 h-20 object-cover rounded"
+              loading="lazy"
+              draggable="false"
+            />
+            <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
+              {object.name}
+            </div>
+
+            <%= if @mode == :edit do %>
+              <div class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  phx-click="delete_object"
+                  phx-value-object_id={object.id}
+                  class="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+<!-- File Upload Section -->
+  <%= if @mode == :edit do %>
+    <div class="px-4 mt-8">
+      <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
+          <h2 class="text-xl font-semibold text-white">Add New Objects</h2>
         </div>
 
-        <div class="p-4">
+        <div class="p-6">
           <form id="upload-form" phx-submit="save_images" phx-change="validate">
             <div
               id="file-drop-zone"
-              class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors"
+              class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors bg-gray-750"
               phx-hook="FileDropZone"
               phx-drop-target={@uploads.images.ref}
               data-max-files={@max_upload_entries}
@@ -156,17 +137,17 @@
                     stroke-linejoin="round"
                   />
                 </svg>
-                <div class="text-gray-600">
+                <div class="text-gray-300">
                   <label class="cursor-pointer" onclick="this.nextElementSibling.click()">
-                    <span class="font-medium text-blue-600 hover:text-blue-500">
+                    <span class="font-medium text-blue-400 hover:text-blue-300">
                       Click to upload
                     </span>
                     <span> or drag and drop</span>
                   </label>
                   <.live_file_input upload={@uploads.images} class="sr-only" />
                 </div>
-                <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 5MB</p>
-                <p class="text-xs text-gray-500">
+                <p class="text-xs text-gray-400">PNG, JPG, GIF, WebP up to 5MB</p>
+                <p class="text-xs text-gray-400">
                   Maximum {@max_upload_entries} files at once
                 </p>
               </div>
@@ -175,14 +156,14 @@
           
 <!-- Upload Progress -->
           <%= for entry <- @uploads.images.entries do %>
-            <div class="mt-2 bg-gray-50 rounded p-2">
+            <div class="mt-2 bg-gray-700 rounded p-2">
               <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-700">{entry.client_name}</span>
-                <span class="text-gray-500">{entry.progress}%</span>
+                <span class="text-gray-200">{entry.client_name}</span>
+                <span class="text-gray-400">{entry.progress}%</span>
               </div>
-              <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+              <div class="w-full bg-gray-600 rounded-full h-2 mt-1">
                 <div
-                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  class="bg-blue-500 h-2 rounded-full transition-all duration-300"
                   style={"width: #{entry.progress}%"}
                 >
                 </div>
@@ -192,11 +173,46 @@
           
 <!-- Upload Errors -->
           <%= for err <- upload_errors(@uploads.images) do %>
-            <div class="mt-2 text-sm text-red-600">
+            <div class="mt-2 text-sm text-red-400">
               {error_to_string(err)}
             </div>
           <% end %>
         </div>
+      </div>
+    </div>
+  <% end %>
+  
+<!-- URLs at the Bottom -->
+  <div class="px-4 py-8 mt-12">
+    <%= if @mode == :edit do %>
+      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 class="text-lg font-semibold text-white mb-4">Share Your Tier List</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Edit URL (you can modify):
+            </label>
+            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
+              <code class="text-green-400 text-sm break-all">
+                {url(~p"/edit/#{@tier_list.edit_token}")}
+              </code>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              View-only URL (read-only with live updates):
+            </label>
+            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
+              <code class="text-blue-400 text-sm break-all">
+                {url(~p"/view/#{@tier_list.view_token}")}
+              </code>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="text-center">
+        <p class="text-gray-400 text-lg">View-only mode - Live updates enabled</p>
       </div>
     <% end %>
   </div>
