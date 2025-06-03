@@ -95,7 +95,11 @@ defmodule RanksyWeb.TierListLive do
 
         {:noreply, reload_objects(socket)}
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        dbg(
+          "Failed to move object: #{inspect(reason)}, object_id: #{inspect(object_id)}, tier_id: #{inspect(tier_id)}"
+        )
+
         {:noreply, socket}
     end
   end
@@ -163,13 +167,11 @@ defmodule RanksyWeb.TierListLive do
 
                 {:error, reason} ->
                   IO.puts("Failed to create object: #{inspect(reason)}")
-                  # Return {:ok, :error} instead of {:error, reason}
                   {:ok, :error}
               end
 
             {:error, reason} ->
               IO.puts("Failed to process image: #{inspect(reason)}")
-              # Return {:ok, :error} instead of {:error, reason}
               {:ok, :error}
           end
         end)

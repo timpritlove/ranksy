@@ -24,8 +24,9 @@
       <% end %>
     </div>
     
-<!-- Tier List -->
+<!-- Drag and Drop Arena -->
     <div id="tier-list" phx-hook="TierListDragDrop" class="space-y-4 mb-8">
+      <!-- Tiers -->
       <%= for tier <- @tiers do %>
         <div class="tier-row bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <!-- Tier Header -->
@@ -44,15 +45,17 @@
           >
             <%= for object <- objects_for_tier(@objects, tier.id) do %>
               <div
-                class="tier-object group relative bg-gray-50 rounded-lg p-2 cursor-move hover:shadow-md transition-shadow"
+                class="tier-object group relative bg-gray-50 rounded-lg p-2 cursor-move hover:shadow-md transition-shadow select-none"
                 data-draggable="true"
                 data-object-id={object.id}
+                draggable="true"
               >
                 <img
                   src={~p"/images/#{object.id}"}
                   alt={object.name}
                   class="object-image w-20 h-20 object-cover rounded"
                   loading="lazy"
+                  draggable="false"
                 />
                 <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
                   {object.name}
@@ -74,92 +77,33 @@
           </div>
         </div>
       <% end %>
-    </div>
-    
-<!-- Holding Zone -->
-    <div class="holding-zone bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-800">Objects</h2>
-      </div>
-
-      <div class="holding-objects min-h-[150px] p-4" data-drop-zone="true" data-tier-id="">
-        <%= if @mode == :edit do %>
-          <!-- File Upload Zone -->
-          <div class="upload-zone mb-4">
-            <form id="upload-form" phx-submit="save_images" phx-change="validate">
-              <div
-                id="file-drop-zone"
-                class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors"
-                phx-hook="FileDropZone"
-                phx-drop-target={@uploads.images.ref}
-              >
-                <div class="space-y-2">
-                  <svg
-                    class="mx-auto h-12 w-12 text-gray-400"
-                    stroke="currentColor"
-                    fill="none"
-                    viewBox="0 0 48 48"
-                  >
-                    <path
-                      d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                  <div class="text-gray-600">
-                    <label class="cursor-pointer" onclick="this.nextElementSibling.click()">
-                      <span class="font-medium text-blue-600 hover:text-blue-500">
-                        Click to upload
-                      </span>
-                      <span> or drag and drop</span>
-                    </label>
-                    <.live_file_input upload={@uploads.images} class="sr-only" />
-                  </div>
-                  <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 5MB</p>
-                </div>
-              </div>
-            </form>
-            
-<!-- Upload Progress -->
-            <%= for entry <- @uploads.images.entries do %>
-              <div class="mt-2 bg-gray-50 rounded p-2">
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-700">{entry.client_name}</span>
-                  <span class="text-gray-500">{entry.progress}%</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                  <div
-                    class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={"width: #{entry.progress}%"}
-                  >
-                  </div>
-                </div>
-              </div>
-            <% end %>
-            
-<!-- Upload Errors -->
-            <%= for err <- upload_errors(@uploads.images) do %>
-              <div class="mt-2 text-sm text-red-600">
-                {error_to_string(err)}
-              </div>
-            <% end %>
-          </div>
-        <% end %>
+      
+<!-- Holding Zone (treated as a special tier) -->
+      <div class="tier-row bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <!-- Holding Zone Header -->
+        <div class="tier-header px-4 py-3 flex items-center bg-gray-50 border-b border-gray-200">
+          <span class="text-lg font-bold text-gray-800">Objects</span>
+        </div>
         
-<!-- Unassigned Objects -->
-        <div class="flex flex-wrap gap-3">
+<!-- Holding Zone Objects -->
+        <div
+          class="tier-objects min-h-[150px] p-4 flex flex-wrap gap-3"
+          data-drop-zone="true"
+          data-tier-id=""
+        >
           <%= for object <- unassigned_objects(@objects) do %>
             <div
-              class="tier-object group relative bg-gray-50 rounded-lg p-2 cursor-move hover:shadow-md transition-shadow"
+              class="tier-object group relative bg-gray-50 rounded-lg p-2 cursor-move hover:shadow-md transition-shadow select-none"
               data-draggable="true"
               data-object-id={object.id}
+              draggable="true"
             >
               <img
                 src={~p"/images/#{object.id}"}
                 alt={object.name}
                 class="object-image w-20 h-20 object-cover rounded"
                 loading="lazy"
+                draggable="false"
               />
               <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
                 {object.name}
@@ -181,5 +125,75 @@
         </div>
       </div>
     </div>
+    
+<!-- File Upload Section (separate from drag-drop) -->
+    <%= if @mode == :edit do %>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-800">Add New Objects</h2>
+        </div>
+
+        <div class="p-4">
+          <form id="upload-form" phx-submit="save_images" phx-change="validate">
+            <div
+              id="file-drop-zone"
+              class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors"
+              phx-hook="FileDropZone"
+              phx-drop-target={@uploads.images.ref}
+            >
+              <div class="space-y-2">
+                <svg
+                  class="mx-auto h-12 w-12 text-gray-400"
+                  stroke="currentColor"
+                  fill="none"
+                  viewBox="0 0 48 48"
+                >
+                  <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <div class="text-gray-600">
+                  <label class="cursor-pointer" onclick="this.nextElementSibling.click()">
+                    <span class="font-medium text-blue-600 hover:text-blue-500">
+                      Click to upload
+                    </span>
+                    <span> or drag and drop</span>
+                  </label>
+                  <.live_file_input upload={@uploads.images} class="sr-only" />
+                </div>
+                <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 5MB</p>
+              </div>
+            </div>
+          </form>
+          
+<!-- Upload Progress -->
+          <%= for entry <- @uploads.images.entries do %>
+            <div class="mt-2 bg-gray-50 rounded p-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-gray-700">{entry.client_name}</span>
+                <span class="text-gray-500">{entry.progress}%</span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                <div
+                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={"width: #{entry.progress}%"}
+                >
+                </div>
+              </div>
+            </div>
+          <% end %>
+          
+<!-- Upload Errors -->
+          <%= for err <- upload_errors(@uploads.images) do %>
+            <div class="mt-2 text-sm text-red-600">
+              {error_to_string(err)}
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
   </div>
 </div>

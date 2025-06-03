@@ -8,15 +8,37 @@ const TierListDragDrop = {
     },
 
     setupDragAndDrop() {
-        // Make objects draggable
+        console.log('=== SETUP DRAG AND DROP ===');
+        console.log('Hook element:', this.el);
+
+        // Remove existing event listeners to avoid duplicates
         this.el.querySelectorAll('[data-draggable]').forEach(item => {
+            item.removeEventListener('dragstart', this.handleDragStart);
+            item.removeEventListener('dragend', this.handleDragEnd);
+        });
+
+        // Make objects draggable
+        const draggableItems = this.el.querySelectorAll('[data-draggable]');
+        console.log('Setting up drag and drop for', draggableItems.length, 'items');
+
+        draggableItems.forEach((item, index) => {
+            const objectId = item.dataset.objectId;
+            console.log(`Item ${index}:`, {
+                element: item,
+                objectId: objectId,
+                objectIdType: typeof objectId
+            });
+
             item.draggable = true;
             item.addEventListener('dragstart', this.handleDragStart.bind(this));
             item.addEventListener('dragend', this.handleDragEnd.bind(this));
         });
 
-        // Make tiers and holding zone drop targets
-        this.el.querySelectorAll('[data-drop-zone]').forEach(zone => {
+        // Make drop zones
+        const dropZones = this.el.querySelectorAll('[data-drop-zone]');
+        console.log('Setting up', dropZones.length, 'drop zones');
+
+        dropZones.forEach(zone => {
             zone.addEventListener('dragover', this.handleDragOver.bind(this));
             zone.addEventListener('drop', this.handleDrop.bind(this));
             zone.addEventListener('dragenter', this.handleDragEnter.bind(this));
@@ -25,7 +47,25 @@ const TierListDragDrop = {
     },
 
     handleDragStart(e) {
-        e.dataTransfer.setData('text/plain', e.target.dataset.objectId);
+        console.log('=== DRAG START EVENT TRIGGERED ===');
+
+        // Find the closest element with data-object-id
+        const draggableElement = e.target.closest('[data-object-id]');
+        const objectId = draggableElement ? draggableElement.dataset.objectId : null;
+
+        console.log('Drag start:', {
+            objectId: objectId,
+            target: e.target,
+            draggableElement: draggableElement
+        });
+
+        if (!objectId || objectId === '' || objectId === 'undefined') {
+            console.error('No valid objectId found for dragged element');
+            e.preventDefault();
+            return;
+        }
+
+        e.dataTransfer.setData('text/plain', objectId);
         e.target.classList.add('opacity-50');
         e.dataTransfer.effectAllowed = 'move';
     },
@@ -60,10 +100,22 @@ const TierListDragDrop = {
         e.preventDefault();
         const objectId = e.dataTransfer.getData('text/plain');
         const targetTierId = e.currentTarget.dataset.tierId;
-        const position = this.calculateDropPosition(e);
+        const position = 0;
+
+        console.log('Drop event:', {
+            objectId: objectId,
+            targetTierId: targetTierId,
+            position: position
+        });
 
         // Remove highlight
         e.currentTarget.classList.remove('bg-blue-50', 'border-blue-300');
+
+        // Validate objectId before sending
+        if (!objectId || objectId.trim() === '') {
+            console.error('Invalid objectId:', objectId);
+            return;
+        }
 
         // Send event to LiveView
         this.pushEvent('move_object', {
@@ -71,12 +123,6 @@ const TierListDragDrop = {
             tier_id: targetTierId,
             position: position
         });
-    },
-
-    calculateDropPosition(e) {
-        // For now, just append to the end
-        // Could be enhanced to calculate exact position based on drop coordinates
-        return 0;
     }
 };
 

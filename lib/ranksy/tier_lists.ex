@@ -150,7 +150,17 @@ defmodule Ranksy.TierLists do
   Moves an object to a tier.
   """
   def move_object_to_tier(object_id, tier_id, position \\ 0) do
-    object = Repo.get!(Object, object_id)
-    update_object(object, %{tier_id: tier_id, position: position})
+    # Validate object_id is not empty
+    if object_id == "" or is_nil(object_id) do
+      {:error, :invalid_object_id}
+    else
+      case Repo.get(Object, object_id) do
+        nil ->
+          {:error, :object_not_found}
+
+        object ->
+          update_object(object, %{tier_id: tier_id, position: position})
+      end
+    end
   end
 end
