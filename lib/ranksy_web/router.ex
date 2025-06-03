@@ -17,7 +17,10 @@ defmodule RanksyWeb.Router do
   scope "/", RanksyWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", HomeLive
+    live "/edit/:edit_token", TierListLive
+    live "/view/:view_token", TierListLive
+    get "/images/:id", ImageController, :show
   end
 
   # Other scopes may use custom stacks.

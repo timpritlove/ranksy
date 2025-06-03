@@ -58,7 +58,7 @@ defmodule Ranksy.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
-      {:mogrify, "~> 0.9.3"}
+      {:image, "~> 0.59"}
     ]
   end
 

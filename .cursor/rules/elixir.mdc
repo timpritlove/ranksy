@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Use the dbg() function for debugging instead of IO.inspect where appropriate
