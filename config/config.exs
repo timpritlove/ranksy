@@ -64,6 +64,13 @@ config :phoenix, :json_library, Jason
 # Image library configuration (using libvips)
 # No additional configuration needed - Image library works out of the box
 
+# File upload configuration
+# max_entries: Maximum number of files that can be uploaded at once
+# max_file_size: Maximum file size in bytes (5MB = 5_000_000 bytes)
+config :ranksy, :uploads,
+  max_entries: 50,
+  max_file_size: 5_000_000
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

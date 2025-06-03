@@ -3,6 +3,7 @@ defmodule RanksyWeb.TierListLive do
 
   alias Ranksy.TierLists
   alias Ranksy.ImageProcessor
+  alias Ranksy.UploadConfig
 
   @impl true
   def mount(%{"edit_token" => edit_token}, _session, socket) do
@@ -15,16 +16,20 @@ defmodule RanksyWeb.TierListLive do
           Phoenix.PubSub.subscribe(Ranksy.PubSub, "tier_list:#{tier_list.id}")
         end
 
+        max_entries = UploadConfig.max_entries()
+        max_file_size = UploadConfig.max_file_size()
+
         socket =
           socket
           |> assign(:tier_list, tier_list)
           |> assign(:tiers, TierLists.list_tiers(tier_list.id))
           |> assign(:objects, TierLists.list_objects(tier_list.id))
           |> assign(:mode, :edit)
+          |> assign(:max_upload_entries, max_entries)
           |> allow_upload(:images,
             accept: ~w(.jpg .jpeg .png .gif .webp),
-            max_entries: 10,
-            max_file_size: 5_000_000,
+            max_entries: max_entries,
+            max_file_size: max_file_size,
             auto_upload: true,
             progress: &handle_progress/3
           )
@@ -145,55 +150,62 @@ defmodule RanksyWeb.TierListLive do
   defp handle_progress(:images, entry, socket) do
     IO.puts("Upload progress for #{entry.client_name}: #{entry.progress}%")
 
-    if entry.done? do
-      IO.puts("Upload completed for #{entry.client_name}, processing...")
+    # Handle cancelled or failed uploads
+    cond do
+      entry.cancelled? ->
+        IO.puts("Upload cancelled for #{entry.client_name}")
+        {:noreply, socket}
 
-      result =
-        consume_uploaded_entry(socket, entry, fn %{path: path} ->
-          case ImageProcessor.process_upload(path, entry.client_name) do
-            {:ok, processed_image} ->
-              IO.puts("Image processed successfully")
+      entry.done? ->
+        IO.puts("Upload completed for #{entry.client_name}, processing...")
 
-              case TierLists.create_object(socket.assigns.tier_list.id, %{
-                     name: Path.rootname(entry.client_name),
-                     image_data: processed_image.image_data,
-                     content_type: processed_image.content_type,
-                     file_size: processed_image.file_size
-                   }) do
-                {:ok, object} ->
-                  IO.puts("Object created successfully: #{object.id}")
-                  broadcast_update(socket.assigns.tier_list.id, :object_created, object)
-                  {:ok, object}
+        result =
+          consume_uploaded_entry(socket, entry, fn %{path: path} ->
+            case ImageProcessor.process_upload(path, entry.client_name) do
+              {:ok, processed_image} ->
+                IO.puts("Image processed successfully")
 
-                {:error, reason} ->
-                  IO.puts("Failed to create object: #{inspect(reason)}")
-                  {:ok, :error}
-              end
+                case TierLists.create_object(socket.assigns.tier_list.id, %{
+                       name: Path.rootname(entry.client_name),
+                       image_data: processed_image.image_data,
+                       content_type: processed_image.content_type,
+                       file_size: processed_image.file_size
+                     }) do
+                  {:ok, object} ->
+                    IO.puts("Object created successfully: #{object.id}")
+                    broadcast_update(socket.assigns.tier_list.id, :object_created, object)
+                    {:ok, object}
 
-            {:error, reason} ->
-              IO.puts("Failed to process image: #{inspect(reason)}")
-              {:ok, :error}
-          end
-        end)
+                  {:error, reason} ->
+                    IO.puts("Failed to create object: #{inspect(reason)}")
+                    {:ok, :error}
+                end
 
-      dbg(result)
+              {:error, reason} ->
+                IO.puts("Failed to process image: #{inspect(reason)}")
+                {:ok, :error}
+            end
+          end)
 
-      case result do
-        %Ranksy.TierLists.Object{} ->
-          {:noreply, socket |> reload_objects()}
+        dbg(result)
 
-        :error ->
-          {:noreply, socket}
+        case result do
+          %Ranksy.TierLists.Object{} ->
+            {:noreply, socket |> reload_objects()}
 
-        {:error, _reason} ->
-          {:noreply, socket}
+          :error ->
+            {:noreply, socket}
 
-        _ ->
-          IO.puts("Upload consumption failed: #{inspect(result)}")
-          {:noreply, socket}
-      end
-    else
-      {:noreply, socket}
+          {:error, _reason} ->
+            {:noreply, socket}
+
+          _ ->
+            IO.puts("Upload consumption failed: #{inspect(result)}")
+            {:noreply, socket}
+        end
+
+      true ->
+        {:noreply, socket}
     end
   end
 

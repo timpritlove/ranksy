@@ -19,6 +19,12 @@ const FileDropZone = {
         });
 
         dropZone.addEventListener('drop', this.handleDrop.bind(this), false);
+
+        // Add validation for file input changes (click selection)
+        const fileInput = dropZone.querySelector('input[type="file"]');
+        if (fileInput) {
+            fileInput.addEventListener('change', this.handleFileInputChange.bind(this), false);
+        }
     },
 
     preventDefaults(e) {
@@ -39,6 +45,13 @@ const FileDropZone = {
         const files = dt.files;
 
         if (files.length > 0) {
+            // Check file limit
+            const maxFiles = parseInt(this.el.dataset.maxFiles);
+            if (files.length > maxFiles) {
+                this.showError(`Too many files selected. Maximum ${maxFiles} files allowed, but ${files.length} were selected.`);
+                return;
+            }
+
             // Find the LiveView file input and trigger the upload
             const fileInput = this.el.querySelector('input[type="file"]');
             if (fileInput) {
@@ -56,6 +69,41 @@ const FileDropZone = {
                 fileInput.dispatchEvent(changeEvent);
             }
         }
+    },
+
+    handleFileInputChange(e) {
+        const files = e.target.files;
+        const maxFiles = parseInt(this.el.dataset.maxFiles);
+
+        if (files.length > maxFiles) {
+            this.showError(`Too many files selected. Maximum ${maxFiles} files allowed, but ${files.length} were selected.`);
+            // Clear the file input
+            e.target.value = '';
+            return false;
+        }
+    },
+
+    showError(message) {
+        // Remove any existing error messages
+        const existingError = document.querySelector('.file-upload-error');
+        if (existingError) {
+            existingError.remove();
+        }
+
+        // Create and show error message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'file-upload-error mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2';
+        errorDiv.textContent = message;
+
+        // Insert after the drop zone
+        this.el.parentNode.insertBefore(errorDiv, this.el.nextSibling);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.remove();
+            }
+        }, 5000);
     }
 };
 

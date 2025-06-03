@@ -140,6 +140,7 @@
               class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors"
               phx-hook="FileDropZone"
               phx-drop-target={@uploads.images.ref}
+              data-max-files={@max_upload_entries}
             >
               <div class="space-y-2">
                 <svg
@@ -165,6 +166,9 @@
                   <.live_file_input upload={@uploads.images} class="sr-only" />
                 </div>
                 <p class="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 5MB</p>
+                <p class="text-xs text-gray-500">
+                  Maximum {@max_upload_entries} files at once
+                </p>
               </div>
             </div>
           </form>
