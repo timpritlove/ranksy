@@ -127,13 +127,19 @@ defmodule RanksyWeb.TierListLive do
   def handle_event("delete_object", %{"object_id" => object_id}, socket) do
     object = TierLists.get_object_with_image(object_id)
 
-    case TierLists.delete_object(object) do
-      {:ok, _} ->
-        broadcast_update(socket.assigns.tier_list.id, :object_deleted, %{object_id: object_id})
-        {:noreply, reload_objects(socket)}
+    # Only allow deletion if object is in holding zone (tier_id is nil)
+    if is_nil(object.tier_id) do
+      case TierLists.delete_object(object) do
+        {:ok, _} ->
+          broadcast_update(socket.assigns.tier_list.id, :object_deleted, %{object_id: object_id})
+          {:noreply, reload_objects(socket)}
 
-      {:error, _} ->
-        {:noreply, socket}
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    else
+      # Object is assigned to a tier, cannot delete
+      {:noreply, socket}
     end
   end
 
