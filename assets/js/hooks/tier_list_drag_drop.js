@@ -478,8 +478,13 @@ const TierListDragDrop = {
 
     updateTouchDrag(touch) {
         if (this.touchDragPreview) {
-            this.touchDragPreview.style.left = `${touch.clientX - 40}px`;
-            this.touchDragPreview.style.top = `${touch.clientY - 40}px`;
+            // Center the preview on the touch point
+            const previewRect = this.touchDragPreview.getBoundingClientRect();
+            const offsetX = previewRect.width / 2;
+            const offsetY = previewRect.height / 2;
+
+            this.touchDragPreview.style.left = `${touch.clientX - offsetX}px`;
+            this.touchDragPreview.style.top = `${touch.clientY - offsetY}px`;
         }
 
         const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -522,20 +527,57 @@ const TierListDragDrop = {
     },
 
     createTouchDragPreview(element) {
+        // Get the original element's dimensions
+        const rect = element.getBoundingClientRect();
+
         this.touchDragPreview = element.cloneNode(true);
         this.touchDragPreview.classList.add('touch-drag-preview');
+
+        // Remove any problematic classes or attributes
+        this.touchDragPreview.removeAttribute('draggable');
+        this.touchDragPreview.classList.remove('touch-pressed', 'touch-dragging', 'opacity-50');
+
+        // Ensure images are properly loaded and displayed
+        const images = this.touchDragPreview.querySelectorAll('img');
+        images.forEach(img => {
+            img.style.display = 'block';
+            img.style.visibility = 'visible';
+            img.style.opacity = '1';
+            img.removeAttribute('loading'); // Remove lazy loading
+            img.draggable = false;
+
+            // Force image to load if it hasn't already
+            if (!img.complete) {
+                img.src = img.src; // Trigger reload
+            }
+        });
+
+        // Ensure all child elements are properly styled
+        const allElements = [this.touchDragPreview, ...this.touchDragPreview.querySelectorAll('*')];
+        allElements.forEach(el => {
+            el.style.pointerEvents = 'none';
+            el.style.userSelect = 'none';
+        });
+
+        // Use actual element dimensions with some scaling
+        const scaledWidth = Math.min(rect.width * 0.9, 120); // Max 120px width
+        const scaledHeight = Math.min(rect.height * 0.9, 120); // Max 120px height
+
         this.touchDragPreview.style.cssText = `
             position: fixed;
-            width: 80px;
-            height: 80px;
+            width: ${scaledWidth}px;
+            height: ${scaledHeight}px;
             pointer-events: none;
             z-index: 9999;
-            opacity: 0.8;
-            transform: scale(1.1) rotate(5deg);
+            opacity: 0.85;
+            transform: scale(1.05) rotate(3deg);
             transition: none;
             border: 2px solid #3b82f6;
             border-radius: 8px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            background: white;
+            overflow: visible;
+            display: block;
         `;
         document.body.appendChild(this.touchDragPreview);
     },
@@ -621,21 +663,68 @@ const TierListDragDrop = {
         e.target.classList.add('opacity-50');
         e.dataTransfer.effectAllowed = 'move';
 
-        // Set custom drag image
-        const dragImage = draggableElement.cloneNode(true);
-        dragImage.style.transform = 'rotate(5deg)';
-        dragImage.style.opacity = '0.8';
-        document.body.appendChild(dragImage);
-        e.dataTransfer.setDragImage(dragImage, 40, 40);
+        // Create a better custom drag image
+        this.createDesktopDragImage(e, draggableElement);
 
+        this.draggedElement = draggableElement;
+        this.createDropIndicator();
+    },
+
+    createDesktopDragImage(e, element) {
+        // Try to use the original element directly first
+        const rect = element.getBoundingClientRect();
+
+        // Create a simple visual clone that preserves the image
+        const dragImage = document.createElement('div');
+        const originalImg = element.querySelector('img');
+        const originalName = element.querySelector('.object-name');
+
+        if (originalImg && originalName) {
+            // Create a simplified version with just the image and name
+            dragImage.innerHTML = `
+                <img src="${originalImg.src}" alt="${originalImg.alt}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; display: block;">
+                <div style="text-align: center; margin-top: 4px; font-size: 12px; color: #333; font-weight: 500; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${originalName.textContent}</div>
+            `;
+        } else {
+            // Fallback to cloning
+            dragImage.innerHTML = element.innerHTML;
+        }
+
+        dragImage.style.cssText = `
+            position: absolute;
+            top: -1000px;
+            left: -1000px;
+            width: ${rect.width}px;
+            height: ${rect.height}px;
+            padding: 8px;
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transform: rotate(3deg) scale(0.95);
+            opacity: 0.9;
+            z-index: 10000;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        `;
+
+        // Add to document
+        document.body.appendChild(dragImage);
+
+        // Set the drag image with proper offset
+        const offsetX = rect.width / 2;
+        const offsetY = rect.height / 2;
+        e.dataTransfer.setDragImage(dragImage, offsetX, offsetY);
+
+        // Clean up
         setTimeout(() => {
             if (document.body.contains(dragImage)) {
                 document.body.removeChild(dragImage);
             }
-        }, 0);
-
-        this.draggedElement = draggableElement;
-        this.createDropIndicator();
+        }, 100);
     },
 
     handleDragEnd(e) {
