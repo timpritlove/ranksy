@@ -1,26 +1,23 @@
 const TierListDragDrop = {
     mounted() {
-        console.log('TierListDragDrop hook mounted! VERSION 2024-12-19-FIXED');
+        console.log('TierListDragDrop hook mounted! VERSION 2024-12-19-REFACTORED');
         this.setupDragAndDrop();
         this.initializeTouchSupport();
     },
 
     updated() {
-        // Clean up any existing indicators before re-initializing
         this.removeDropIndicator();
         this.setupDragAndDrop();
         this.initializeTouchSupport();
     },
 
     destroyed() {
-        // Clean up when component is destroyed
         this.removeDropIndicator();
         if (this.touchDragPreview) {
             this.touchDragPreview.remove();
             this.touchDragPreview = null;
         }
 
-        // Remove all event listeners
         if (this.boundHandlers) {
             this.el.querySelectorAll('[data-draggable]').forEach(item => {
                 item.removeEventListener('dragstart', this.boundHandlers.dragStart);
@@ -32,15 +29,298 @@ const TierListDragDrop = {
                 zone.removeEventListener('drop', this.boundHandlers.drop);
                 zone.removeEventListener('dragenter', this.boundHandlers.dragEnter);
                 zone.removeEventListener('dragleave', this.boundHandlers.dragLeave);
+                zone.removeEventListener('touchmove', this.handleDropZoneTouchMove);
             });
         }
 
-        // Clean up any stray elements
         document.querySelectorAll('.drop-indicator, .touch-drag-preview').forEach(el => el.remove());
     },
 
+    // =============================================================================
+    // SHARED CORE FUNCTIONS - Used by both touch and desktop implementations
+    // =============================================================================
+
+    /**
+ * Unified position calculation for both touch and desktop drag operations
+ * @param {Object} coordinates - {x, y} coordinates of the drop/touch point
+ * @param {Element} dropZone - The drop zone element
+ * @param {Element} draggedElement - The element being dragged
+ * @returns {number} The calculated position for insertion
+ */
+    calculateDropPosition(coordinates, dropZone, draggedElement) {
+        const { x: dropX, y: dropY } = coordinates;
+        const allObjectsInTier = Array.from(dropZone.querySelectorAll('[data-object-id]'));
+
+        if (allObjectsInTier.length === 0) {
+            return 0;
+        }
+
+        // Get the original position of the dragged element
+        const originalPosition = parseInt(draggedElement.dataset.position) || 0;
+
+        // Sort ALL objects by their database position
+        const sortedObjects = allObjectsInTier.sort((a, b) => {
+            const posA = parseInt(a.dataset.position) || 0;
+            const posB = parseInt(b.dataset.position) || 0;
+            return posA - posB;
+        });
+
+        // Group objects by visual rows (excluding dragged object)
+        const rows = this.groupObjectsByRows(sortedObjects, draggedElement);
+
+        // Find target row based on Y coordinate
+        const targetRow = this.findTargetRow(rows, dropY);
+
+        if (!targetRow) {
+            return sortedObjects.length;
+        }
+
+        // Find insertion point within the target row based on X coordinate
+        const calculatedPosition = this.findInsertionPosition(targetRow, dropX);
+
+        // Check if we're dropping in the same logical position
+        // This happens when we're dropping right before the object that comes after us
+        if (calculatedPosition === originalPosition + 1) {
+            // Check if there's actually an object at originalPosition + 1
+            const nextObject = sortedObjects.find(obj => parseInt(obj.dataset.position) === originalPosition + 1);
+            if (nextObject && targetRow.some(rowObj => rowObj.position === originalPosition + 1)) {
+                // We're dropping right before the next object, which means staying in the same position
+                return originalPosition;
+            }
+        }
+
+        return calculatedPosition;
+    },
+
+    /**
+     * Groups objects into visual rows based on their Y positions
+     * @param {Array} sortedObjects - Objects sorted by database position
+     * @param {Element} draggedElement - Element to exclude from grouping
+     * @returns {Array} Array of rows, each containing objects with position data
+     */
+    groupObjectsByRows(sortedObjects, draggedElement) {
+        const rows = [];
+        let currentRow = [];
+        let lastTop = null;
+
+        sortedObjects.forEach(obj => {
+            if (obj === draggedElement) return;
+
+            const rect = obj.getBoundingClientRect();
+            if (lastTop === null || Math.abs(rect.top - lastTop) <= 10) {
+                currentRow.push({ element: obj, rect, position: parseInt(obj.dataset.position) || 0 });
+                lastTop = rect.top;
+            } else {
+                if (currentRow.length > 0) {
+                    rows.push(currentRow);
+                }
+                currentRow = [{ element: obj, rect, position: parseInt(obj.dataset.position) || 0 }];
+                lastTop = rect.top;
+            }
+        });
+
+        if (currentRow.length > 0) {
+            rows.push(currentRow);
+        }
+
+        return rows;
+    },
+
+    /**
+     * Finds the target row based on Y coordinate
+     * @param {Array} rows - Array of row objects
+     * @param {number} dropY - Y coordinate of drop point
+     * @returns {Array|null} Target row or null if not found
+     */
+    findTargetRow(rows, dropY) {
+        // First try exact match within row bounds
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const firstRect = row[0].rect;
+            if (dropY >= firstRect.top - 20 && dropY <= firstRect.bottom + 20) {
+                return row;
+            }
+        }
+
+        // If no exact match, find closest row
+        if (rows.length === 0) return null;
+
+        let minDistance = Infinity;
+        let targetRow = null;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowCenterY = row[0].rect.top + (row[0].rect.height / 2);
+            const distance = Math.abs(dropY - rowCenterY);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                targetRow = row;
+            }
+        }
+
+        return targetRow;
+    },
+
+    /**
+ * Finds the insertion position within a row based on X coordinate
+ * @param {Array} targetRow - Array of objects in the target row
+ * @param {number} dropX - X coordinate of drop point
+ * @returns {number} Database position for insertion
+ */
+    findInsertionPosition(targetRow, dropX) {
+        for (let i = 0; i < targetRow.length; i++) {
+            const objRect = targetRow[i].rect;
+            const objCenterX = objRect.left + objRect.width / 2;
+
+            if (dropX < objCenterX) {
+                return targetRow[i].position;
+            }
+        }
+
+        // Insert after the last object in this row
+        const lastInRow = targetRow[targetRow.length - 1];
+        return lastInRow.position + 1;
+    },
+
+    /**
+     * Unified drop indicator update for both touch and desktop
+     * @param {Object} coordinates - {x, y} coordinates
+     * @param {Element} dropZone - The drop zone element
+     * @param {Element} draggedElement - The element being dragged
+     */
+    updateDropIndicator(coordinates, dropZone, draggedElement) {
+        if (!this.dropIndicator) return;
+
+        const { x: dropX, y: dropY } = coordinates;
+        const allObjectsInTier = Array.from(dropZone.querySelectorAll('[data-object-id]'));
+
+        let showIndicator = false;
+        let indicatorX = 0;
+        let indicatorY = 0;
+
+        if (allObjectsInTier.length === 0) {
+            const dropZoneRect = dropZone.getBoundingClientRect();
+            indicatorX = dropZoneRect.left + 20;
+            indicatorY = dropZoneRect.top + 10;
+            this.dropIndicator.style.height = `${Math.max(60, dropZoneRect.height - 20)}px`;
+            showIndicator = true;
+        } else {
+            const sortedObjects = allObjectsInTier.sort((a, b) => {
+                const posA = parseInt(a.dataset.position) || 0;
+                const posB = parseInt(b.dataset.position) || 0;
+                return posA - posB;
+            });
+
+            const rows = this.groupObjectsByRows(sortedObjects, draggedElement);
+            const targetRow = this.findTargetRow(rows, dropY);
+
+            if (targetRow) {
+                let targetObject = null;
+                for (let i = 0; i < targetRow.length; i++) {
+                    const objRect = targetRow[i].rect;
+                    const objCenterX = objRect.left + objRect.width / 2;
+                    if (dropX < objCenterX) {
+                        targetObject = targetRow[i];
+                        break;
+                    }
+                }
+
+                if (targetObject) {
+                    indicatorX = targetObject.rect.left - 8;
+                    indicatorY = targetObject.rect.top;
+                    this.dropIndicator.style.height = `${targetObject.rect.height}px`;
+                    showIndicator = true;
+                } else {
+                    const lastInRow = targetRow[targetRow.length - 1];
+                    indicatorX = lastInRow.rect.right + 8;
+                    indicatorY = lastInRow.rect.top;
+                    this.dropIndicator.style.height = `${lastInRow.rect.height}px`;
+                    showIndicator = true;
+                }
+            }
+        }
+
+        if (showIndicator) {
+            this.dropIndicator.style.display = 'block';
+            this.dropIndicator.style.left = `${indicatorX}px`;
+            this.dropIndicator.style.top = `${indicatorY}px`;
+            this.dropIndicator.style.opacity = '1';
+        } else {
+            this.dropIndicator.style.display = 'none';
+            this.dropIndicator.style.opacity = '0';
+        }
+    },
+
+    /**
+     * Creates the drop indicator element
+     */
+    createDropIndicator() {
+        if (this.dropIndicator) return;
+
+        this.dropIndicator = document.createElement('div');
+        this.dropIndicator.className = 'drop-indicator';
+        this.dropIndicator.style.cssText = `
+            position: fixed;
+            width: 3px;
+            background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            display: none;
+        `;
+        document.body.appendChild(this.dropIndicator);
+    },
+
+    /**
+     * Removes the drop indicator
+     */
+    removeDropIndicator() {
+        if (this.dropIndicator) {
+            this.dropIndicator.remove();
+            this.dropIndicator = null;
+        }
+        document.querySelectorAll('.drop-indicator').forEach(indicator => indicator.remove());
+    },
+
+    /**
+     * Handles the actual move operation - shared by both touch and desktop
+     * @param {string} objectId - ID of the object being moved
+     * @param {string} targetTierId - ID of the target tier
+     * @param {number} position - Calculated position for insertion
+     * @param {number} originalPosition - Original position of the object
+     * @param {string} originalTierId - Original tier ID of the object
+     */
+    performMove(objectId, targetTierId, position, originalPosition, originalTierId) {
+        // Only skip if both position AND tier are the same
+        if (position === originalPosition && targetTierId === originalTierId) {
+            console.log('Dropping in same position and tier, skipping move');
+            return;
+        }
+
+        console.log('PERFORMING MOVE:', {
+            object_id: objectId,
+            tier_id: targetTierId,
+            position: position,
+            originalPosition: originalPosition,
+            originalTierId: originalTierId
+        });
+
+        this.pushEvent('move_object', {
+            object_id: objectId,
+            tier_id: targetTierId,
+            position: position
+        });
+    },
+
+    // =============================================================================
+    // TOUCH IMPLEMENTATION
+    // =============================================================================
+
     initializeTouchSupport() {
-        // Touch-specific state
         this.touchState = {
             isDragging: false,
             startX: 0,
@@ -48,13 +328,12 @@ const TierListDragDrop = {
             currentX: 0,
             currentY: 0,
             draggedElement: null,
-            dragThreshold: 8, // pixels to move before starting drag (reduced for easier initiation)
+            dragThreshold: 8,
             longPressTimer: null,
-            longPressDelay: 300, // ms for long press detection
+            longPressDelay: 300,
             isLongPress: false
         };
 
-        // Detect if device supports touch
         this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
         if (this.isTouchDevice) {
@@ -63,34 +342,40 @@ const TierListDragDrop = {
     },
 
     setupTouchEvents() {
-        // Remove existing touch listeners to avoid duplicates
+        // Setup touch events for draggable items
         this.el.querySelectorAll('[data-draggable="true"]').forEach(item => {
             item.removeEventListener('touchstart', this.handleTouchStart);
             item.removeEventListener('touchmove', this.handleTouchMove);
             item.removeEventListener('touchend', this.handleTouchEnd);
             item.removeEventListener('contextmenu', this.handleContextMenu);
-        });
 
-        // Add touch event listeners to draggable items
-        this.el.querySelectorAll('[data-draggable="true"]').forEach(item => {
-            item.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
+            // Use passive: false for all touch events to allow preventDefault when needed
+            item.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
             item.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
             item.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
-
-            // Prevent context menu on long press for draggable items
             item.addEventListener('contextmenu', this.handleContextMenu.bind(this), { passive: false });
         });
+
+        // Setup touch events for drop zones to prevent scrolling during drag
+        this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
+            zone.removeEventListener('touchmove', this.handleDropZoneTouchMove);
+            zone.addEventListener('touchmove', this.handleDropZoneTouchMove.bind(this), { passive: false });
+        });
+    },
+
+    handleDropZoneTouchMove(e) {
+        // If we're currently dragging, prevent scrolling in drop zones
+        if (this.touchState.isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
     },
 
     handleTouchStart(e) {
         const touch = e.touches[0];
         const draggableElement = e.target.closest('[data-object-id]');
-
         if (!draggableElement) return;
 
-        console.log('Touch start detected on draggable element');
-
-        // Store initial touch position and element
         this.touchState.startX = touch.clientX;
         this.touchState.startY = touch.clientY;
         this.touchState.currentX = touch.clientX;
@@ -98,18 +383,11 @@ const TierListDragDrop = {
         this.touchState.draggedElement = draggableElement;
         this.touchState.isLongPress = false;
 
-        // Add visual feedback immediately
         draggableElement.classList.add('touch-pressed');
+        if (navigator.vibrate) navigator.vibrate(10);
 
-        // Vibrate if supported (subtle feedback)
-        if (navigator.vibrate) {
-            navigator.vibrate(10);
-        }
-
-        // Set up long press detection as a fallback
         this.touchState.longPressTimer = setTimeout(() => {
             if (!this.touchState.isDragging) {
-
                 this.touchState.isLongPress = true;
                 this.startTouchDrag(draggableElement);
             }
@@ -120,7 +398,6 @@ const TierListDragDrop = {
         if (!this.touchState.draggedElement) return;
 
         const touch = e.touches[0];
-
         this.touchState.currentX = touch.clientX;
         this.touchState.currentY = touch.clientY;
 
@@ -128,56 +405,60 @@ const TierListDragDrop = {
         const deltaY = Math.abs(this.touchState.currentY - this.touchState.startY);
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-        // Determine if this is more of a horizontal or vertical movement
         const isHorizontalMovement = deltaX > deltaY;
-        const isSignificantHorizontalMovement = deltaX > 15; // More lenient threshold for horizontal movement
+        const isSignificantHorizontalMovement = deltaX > 15;
 
-        // If we've moved beyond threshold, start dragging
-        // Allow both: primarily horizontal movement OR significant horizontal movement regardless of vertical
-        if (!this.touchState.isDragging && distance > this.touchState.dragThreshold &&
-            (isHorizontalMovement || isSignificantHorizontalMovement)) {
-
-            // Prevent default only when we start dragging
+        // If we're already dragging, always prevent default to stop scrolling
+        if (this.touchState.isDragging) {
             e.preventDefault();
-            clearTimeout(this.touchState.longPressTimer);
-            this.startTouchDrag(this.touchState.draggedElement);
+            e.stopPropagation();
+            this.updateTouchDrag(touch);
+            return;
         }
 
-        // Update drag position if we're dragging
-        if (this.touchState.isDragging) {
-            e.preventDefault(); // Prevent scrolling while dragging
-            this.updateTouchDrag(touch);
+        // Check if we should start dragging
+        if (distance > this.touchState.dragThreshold &&
+            (isHorizontalMovement || isSignificantHorizontalMovement)) {
+            // Prevent default as soon as we detect drag intent
+            e.preventDefault();
+            e.stopPropagation();
+            clearTimeout(this.touchState.longPressTimer);
+            this.startTouchDrag(this.touchState.draggedElement);
+            return;
+        }
+
+        // If movement is primarily vertical and small, allow normal scrolling
+        if (deltaY > deltaX && deltaY > 5) {
+            // This looks like a scroll gesture, don't interfere
+            return;
+        }
+
+        // For any other movement on draggable elements, prevent default to avoid conflicts
+        if (distance > 3) {
+            e.preventDefault();
         }
     },
 
     handleTouchEnd(e) {
-        // Clear long press timer
         clearTimeout(this.touchState.longPressTimer);
 
-        // Remove visual feedback
         if (this.touchState.draggedElement) {
             this.touchState.draggedElement.classList.remove('touch-pressed');
         }
 
         if (this.touchState.isDragging) {
-            e.preventDefault(); // Only prevent default if we were dragging
+            e.preventDefault();
             this.completeTouchDrag(e);
         } else {
-            // If it was a quick tap without dragging, treat as a regular tap
-
-            // Still clean up any indicators that might have been created
             this.removeDropIndicator();
         }
 
-        // Reset touch state
         this.resetTouchState();
     },
 
     handleContextMenu(e) {
-        // Always prevent context menu on draggable items to avoid interference with long press drag
         const draggableElement = e.target.closest('[data-object-id]');
         if (draggableElement) {
-
             e.preventDefault();
             e.stopPropagation();
             return false;
@@ -185,207 +466,62 @@ const TierListDragDrop = {
     },
 
     startTouchDrag(element) {
-        console.log('startTouchDrag called');
-
         this.touchState.isDragging = true;
-
-        // Add dragging visual state
         element.classList.add('touch-dragging');
         element.classList.remove('touch-pressed');
-
-        // Create touch-specific drag preview
         this.createTouchDragPreview(element);
-
-        // Create or update drop indicator
         this.createDropIndicator();
 
-        // Stronger vibration for drag start
-        if (navigator.vibrate) {
-            navigator.vibrate([20, 10, 20]);
-        }
-
-        // Highlight all drop zones
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
         this.highlightDropZones(true);
     },
 
     updateTouchDrag(touch) {
-        if (!this.touchState.isDragging) return;
-
-        // Update drag preview position
         if (this.touchDragPreview) {
-            this.touchDragPreview.style.left = `${touch.clientX - 40}px`; // Center on finger
+            this.touchDragPreview.style.left = `${touch.clientX - 40}px`;
             this.touchDragPreview.style.top = `${touch.clientY - 40}px`;
         }
 
-        // Find the drop zone under the touch point
         const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
         const dropZone = elementUnderTouch?.closest('[data-drop-zone="true"]');
 
-        if (dropZone) {
-            // Update drop indicator for touch
-            this.updateTouchDropIndicator(touch, dropZone);
+        this.highlightCurrentDropZone(dropZone);
 
-            // Highlight current drop zone
-            this.highlightCurrentDropZone(dropZone);
+        if (dropZone) {
+            this.updateDropIndicator(
+                { x: touch.clientX, y: touch.clientY },
+                dropZone,
+                this.touchState.draggedElement
+            );
         }
     },
 
     completeTouchDrag(e) {
-        console.log('completeTouchDrag called');
-
         const touch = e.changedTouches[0];
         const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
         const dropZone = elementUnderTouch?.closest('[data-drop-zone="true"]');
 
-        console.log('Drop zone found:', dropZone ? dropZone.dataset.tierId : 'none');
-
         if (dropZone && this.touchState.draggedElement) {
             const objectId = this.touchState.draggedElement.dataset.objectId;
             const targetTierId = dropZone.dataset.tierId;
+            const originalPosition = parseInt(this.touchState.draggedElement.dataset.position) || 0;
+            const originalTierId = this.touchState.draggedElement.closest('[data-drop-zone="true"]')?.dataset.tierId;
 
-            // Calculate position for touch drop
-            const position = this.calculateTouchDropPosition(touch, dropZone);
+            const position = this.calculateDropPosition(
+                { x: touch.clientX, y: touch.clientY },
+                dropZone,
+                this.touchState.draggedElement
+            );
 
+            this.performMove(objectId, targetTierId, position, originalPosition, originalTierId);
 
-
-            // Send event to LiveView
-            this.pushEvent('move_object', {
-                object_id: objectId,
-                tier_id: targetTierId,
-                position: position
-            });
-
-            // Success vibration
-            if (navigator.vibrate) {
-                navigator.vibrate([30, 20, 30]);
-            }
+            if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
         }
 
-        // Clean up drag state - always do this regardless of success/failure
         this.cleanupTouchDrag();
     },
 
-    calculateTouchDropPosition(touch, dropZone) {
-        console.log('calculateTouchDropPosition called');
-
-        const existingObjects = Array.from(dropZone.querySelectorAll('[data-object-id]'))
-            .filter(obj => obj !== this.touchState.draggedElement);
-
-        if (existingObjects.length === 0) {
-            console.log('Empty tier, returning position 0');
-            return 0;
-        }
-
-        const touchX = touch.clientX;
-        const touchY = touch.clientY;
-
-        // Sort objects by their database position (most reliable)
-        const sortedObjects = existingObjects.sort((a, b) => {
-            const posA = parseInt(a.dataset.position) || 0;
-            const posB = parseInt(b.dataset.position) || 0;
-            return posA - posB;
-        });
-
-        // Group objects by visual rows for touch targeting
-        const rows = [];
-        let currentRow = [];
-        let lastTop = null;
-
-        sortedObjects.forEach(obj => {
-            const rect = obj.getBoundingClientRect();
-            if (lastTop === null || Math.abs(rect.top - lastTop) <= 10) {
-                // Same row
-                currentRow.push({ element: obj, rect, position: parseInt(obj.dataset.position) || 0 });
-                lastTop = rect.top;
-            } else {
-                // New row
-                if (currentRow.length > 0) {
-                    rows.push(currentRow);
-                }
-                currentRow = [{ element: obj, rect, position: parseInt(obj.dataset.position) || 0 }];
-                lastTop = rect.top;
-            }
-        });
-        if (currentRow.length > 0) {
-            rows.push(currentRow);
-        }
-
-        // Log current grid layout
-        console.log('=== POSITION CALCULATION ===');
-        console.log('Current grid layout:');
-        rows.forEach((row, rowIndex) => {
-            console.log(`  Row ${rowIndex}: [${row.map(obj => obj.position).join(', ')}]`);
-        });
-
-        // Find which row the touch is in
-        let targetRow = null;
-        let targetRowIndex = -1;
-
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const firstRect = row[0].rect;
-
-            // Check if touch Y is within this row's bounds (with some tolerance)
-            if (touchY >= firstRect.top - 20 && touchY <= firstRect.bottom + 20) {
-                targetRow = row;
-                targetRowIndex = i;
-                break;
-            }
-        }
-
-        // If no specific row found, find the closest row
-        if (!targetRow) {
-            let minDistance = Infinity;
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const rowCenterY = row[0].rect.top + (row[0].rect.height / 2);
-                const distance = Math.abs(touchY - rowCenterY);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    targetRow = row;
-                    targetRowIndex = i;
-                }
-            }
-        }
-
-        console.log(`Target row: ${targetRowIndex} with positions [${targetRow.map(obj => obj.position).join(', ')}]`);
-
-        // Find where to insert within the target row based on touch X position
-        let insertPosition = sortedObjects.length; // Default to end
-
-        if (targetRow) {
-            // Find insertion point within the target row based on X position
-            let targetObject = null;
-
-            for (let i = 0; i < targetRow.length; i++) {
-                const objRect = targetRow[i].rect;
-                const objCenterX = objRect.left + objRect.width / 2;
-
-                if (touchX < objCenterX) {
-                    targetObject = targetRow[i];
-                    break;
-                }
-            }
-
-            if (targetObject) {
-                // Insert before this object - use its database position as the target position
-                insertPosition = targetObject.position;
-                console.log(`Inserting before object at position ${targetObject.position} → final position: ${insertPosition}`);
-            } else {
-                // Insert after the last object in this row
-                const lastInRow = targetRow[targetRow.length - 1];
-                insertPosition = lastInRow.position + 1;
-                console.log(`Inserting after last object in row (position ${lastInRow.position}) → final position: ${insertPosition}`);
-            }
-        }
-
-        console.log('=== END POSITION CALCULATION ===');
-        return insertPosition;
-    },
-
     createTouchDragPreview(element) {
-        // Create a visual preview that follows the finger
         this.touchDragPreview = element.cloneNode(true);
         this.touchDragPreview.classList.add('touch-drag-preview');
         this.touchDragPreview.style.cssText = `
@@ -401,315 +537,36 @@ const TierListDragDrop = {
             border-radius: 8px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         `;
-
         document.body.appendChild(this.touchDragPreview);
     },
 
-    updateTouchDropIndicator(touch, dropZone) {
-        if (!this.dropIndicator) return;
-
-        const existingObjects = Array.from(dropZone.querySelectorAll('[data-object-id]'))
-            .filter(obj => obj !== this.touchState.draggedElement);
-
-        const touchX = touch.clientX;
-        const touchY = touch.clientY;
-
-        let showIndicator = false;
-        let indicatorX = 0;
-        let indicatorY = 0;
-
-        if (existingObjects.length === 0) {
-            // Show indicator in drop zone
-            const dropZoneRect = dropZone.getBoundingClientRect();
-            indicatorX = dropZoneRect.left + 20;
-            indicatorY = dropZoneRect.top + 10; // Start near the top of the drop zone
-            const indicatorHeight = Math.max(60, dropZoneRect.height - 20); // Dynamic height
-            this.dropIndicator.style.height = `${indicatorHeight}px`;
-            showIndicator = true;
-        } else {
-            // Sort objects by their database position (most reliable)
-            const sortedObjects = existingObjects.sort((a, b) => {
-                const posA = parseInt(a.dataset.position) || 0;
-                const posB = parseInt(b.dataset.position) || 0;
-                return posA - posB;
-            });
-
-            // Group objects by rows to find which row the touch is in
-            const rows = [];
-            let currentRow = [];
-            let lastTop = null;
-
-            sortedObjects.forEach(obj => {
-                const rect = obj.getBoundingClientRect();
-                if (lastTop === null || Math.abs(rect.top - lastTop) <= 10) {
-                    // Same row
-                    currentRow.push({ element: obj, rect, position: parseInt(obj.dataset.position) || 0 });
-                    lastTop = rect.top;
-                } else {
-                    // New row
-                    if (currentRow.length > 0) {
-                        rows.push(currentRow);
-                    }
-                    currentRow = [{ element: obj, rect, position: parseInt(obj.dataset.position) || 0 }];
-                    lastTop = rect.top;
-                }
-            });
-            if (currentRow.length > 0) {
-                rows.push(currentRow);
-            }
-
-            // Find which row the touch is in
-            let targetRow = null;
-            let targetRowIndex = -1;
-
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const firstRect = row[0].rect;
-                const lastRect = row[row.length - 1].rect;
-
-                // Check if touch Y is within this row's bounds (with some tolerance)
-                if (touchY >= firstRect.top - 20 && touchY <= firstRect.bottom + 20) {
-                    targetRow = row;
-                    targetRowIndex = i;
-                    break;
-                }
-            }
-
-            // If no specific row found, find the closest row
-            if (!targetRow) {
-                let minDistance = Infinity;
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    const rowCenterY = row[0].rect.top + (row[0].rect.height / 2);
-                    const distance = Math.abs(touchY - rowCenterY);
-
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        targetRow = row;
-                        targetRowIndex = i;
-                    }
-                }
-            }
-
-            // Find where to insert within the target row
-            let insertPosition = sortedObjects.length; // Default to end
-            let targetRect = null;
-
-            if (targetRow) {
-                // Calculate position within all objects up to this row
-                let positionOffset = 0;
-                for (let i = 0; i < targetRowIndex; i++) {
-                    positionOffset += rows[i].length;
-                }
-
-                // Find insertion point within the target row
-                let rowInsertPosition = targetRow.length; // Default to end of row
-
-                for (let i = 0; i < targetRow.length; i++) {
-                    const objRect = targetRow[i].rect;
-                    const objCenterX = objRect.left + objRect.width / 2;
-
-                    if (touchX < objCenterX) {
-                        rowInsertPosition = i;
-                        targetRect = objRect;
-                        break;
-                    }
-                }
-
-                insertPosition = positionOffset + rowInsertPosition;
-
-                // If inserting at end of row, use the last object's rect for positioning
-                if (!targetRect && targetRow.length > 0) {
-                    targetRect = targetRow[targetRow.length - 1].rect;
-                }
-            }
-
-            // Position the indicator
-            if (targetRect) {
-                // Insert before this object
-                indicatorX = targetRect.left - 8;
-                indicatorY = targetRect.top;
-                const indicatorHeight = targetRect.height;
-                this.dropIndicator.style.height = `${indicatorHeight}px`;
-                showIndicator = true;
-            } else if (targetRow && targetRow.length > 0) {
-                // Insert at the end of the target row
-                const lastInRow = targetRow[targetRow.length - 1];
-                indicatorX = lastInRow.rect.right + 8;
-                indicatorY = lastInRow.rect.top;
-                const indicatorHeight = lastInRow.rect.height;
-                this.dropIndicator.style.height = `${indicatorHeight}px`;
-                showIndicator = true;
-            } else if (sortedObjects.length > 0) {
-                // Fallback: insert at the end of all objects
-                const lastRect = sortedObjects[sortedObjects.length - 1].getBoundingClientRect();
-                indicatorX = lastRect.right + 8;
-                indicatorY = lastRect.top;
-                const indicatorHeight = lastRect.height;
-                this.dropIndicator.style.height = `${indicatorHeight}px`;
-                showIndicator = true;
-            }
-        }
-
-        if (showIndicator && this.touchState.isDragging) {
-            this.dropIndicator.style.display = 'block';
-            this.dropIndicator.style.left = `${indicatorX}px`;
-            this.dropIndicator.style.top = `${indicatorY}px`;
-            this.dropIndicator.style.opacity = '1';
-        } else {
-            this.dropIndicator.style.display = 'none';
-            this.dropIndicator.style.opacity = '0';
-        }
-    },
-
-    highlightDropZones(highlight) {
-        this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
-            this.highlightDropZone(zone, highlight, 'background-only');
-        });
-    },
-
-    highlightCurrentDropZone(currentZone) {
-        // Remove hover from all zones
-        this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
-            this.highlightDropZone(zone, false, 'hover');
-        });
-
-        // Add hover to current zone
-        if (currentZone) {
-            this.highlightDropZone(currentZone, true, 'hover');
-        }
-    },
-
-    highlightDropZone(zone, highlight, type = 'normal') {
-        if (!zone) return;
-
-        // Remove any existing highlight
-        zone.style.removeProperty('background-color');
-        zone.style.removeProperty('border');
-        zone.style.removeProperty('box-shadow');
-        zone.classList.remove('drop-zone-highlighted');
-
-        if (highlight) {
-            // Find the tier row to get the background color
-            const tierRow = zone.closest('.tier-row');
-            let baseColor = '#f3f4f6'; // Default gray for holding zone
-
-            if (tierRow && tierRow.style.backgroundColor) {
-                baseColor = tierRow.style.backgroundColor;
-            }
-
-            // Convert the base color to a lighter version
-            const lightColor = this.lightenColor(baseColor, type === 'hover' ? 0.3 : 0.2);
-
-            zone.style.backgroundColor = lightColor;
-
-            // Only add borders and shadows for specific types
-            if (type === 'hover') {
-                zone.style.border = '2px solid rgba(59, 130, 246, 0.6)';
-                zone.style.boxShadow = '0 0 12px rgba(59, 130, 246, 0.3)';
-            } else if (type === 'normal') {
-                zone.style.border = '2px dashed rgba(59, 130, 246, 0.4)';
-            }
-            // For 'background-only' type, we don't add any border or shadow
-
-            zone.classList.add('drop-zone-highlighted');
-        }
-    },
-
-    lightenColor(color, amount) {
-        // Handle rgb() format
-        const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-        if (rgbMatch) {
-            const r = parseInt(rgbMatch[1]);
-            const g = parseInt(rgbMatch[2]);
-            const b = parseInt(rgbMatch[3]);
-
-            const newR = Math.min(255, Math.round(r + (255 - r) * amount));
-            const newG = Math.min(255, Math.round(g + (255 - g) * amount));
-            const newB = Math.min(255, Math.round(b + (255 - b) * amount));
-
-            return `rgb(${newR}, ${newG}, ${newB})`;
-        }
-
-        // Handle hex format
-        const hexMatch = color.match(/^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-        if (hexMatch) {
-            const r = parseInt(hexMatch[1], 16);
-            const g = parseInt(hexMatch[2], 16);
-            const b = parseInt(hexMatch[3], 16);
-
-            const newR = Math.min(255, Math.round(r + (255 - r) * amount));
-            const newG = Math.min(255, Math.round(g + (255 - g) * amount));
-            const newB = Math.min(255, Math.round(b + (255 - b) * amount));
-
-            return `rgb(${newR}, ${newG}, ${newB})`;
-        }
-
-        // Fallback to a light blue if we can't parse the color
-        return amount > 0.25 ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
-    },
-
     cleanupTouchDrag() {
-
-
-        // Remove drag preview
         if (this.touchDragPreview) {
-
             this.touchDragPreview.remove();
             this.touchDragPreview = null;
         }
 
-        // Remove drop indicator
-        this.removeDropIndicator();
-
-        // Remove drag visual states
         if (this.touchState.draggedElement) {
-            this.touchState.draggedElement.classList.remove('touch-dragging');
+            this.touchState.draggedElement.classList.remove('touch-dragging', 'touch-pressed');
         }
 
-        // Remove drop zone highlights
+        this.removeDropIndicator();
         this.highlightDropZones(false);
-
-        // Also clean up any remaining highlights
-        this.el.querySelectorAll('.drop-zone-highlighted').forEach(zone => {
-            this.highlightDropZone(zone, false, 'any');
-        });
-
-        // Also clean up any stray drag previews that might exist
-        document.querySelectorAll('.touch-drag-preview').forEach(preview => {
-
-            preview.remove();
-        });
-
-        // Force cleanup of any remaining drop indicators
-        document.querySelectorAll('.drop-indicator').forEach(indicator => {
-
-            indicator.remove();
-        });
+        document.querySelectorAll('.touch-drag-preview, .drop-indicator').forEach(el => el.remove());
     },
 
     resetTouchState() {
-        // Clean up any remaining drag elements before resetting state
-        if (this.touchState.isDragging) {
-            this.cleanupTouchDrag();
-        }
-
-        this.touchState = {
-            isDragging: false,
-            startX: 0,
-            startY: 0,
-            currentX: 0,
-            currentY: 0,
-            draggedElement: null,
-            dragThreshold: 8,
-            longPressTimer: null,
-            longPressDelay: 300,
-            isLongPress: false
-        };
+        this.touchState.isDragging = false;
+        this.touchState.draggedElement = null;
+        this.touchState.isLongPress = false;
+        clearTimeout(this.touchState.longPressTimer);
     },
 
+    // =============================================================================
+    // DESKTOP IMPLEMENTATION
+    // =============================================================================
+
     setupDragAndDrop() {
-        // Store bound functions to ensure we can remove them later
         if (!this.boundHandlers) {
             this.boundHandlers = {
                 dragStart: this.handleDragStart.bind(this),
@@ -721,13 +578,12 @@ const TierListDragDrop = {
             };
         }
 
-        // Remove existing event listeners to avoid duplicates
+        // Remove existing listeners
         this.el.querySelectorAll('[data-draggable]').forEach(item => {
             item.removeEventListener('dragstart', this.boundHandlers.dragStart);
             item.removeEventListener('dragend', this.boundHandlers.dragEnd);
         });
 
-        // Remove existing drop zone listeners to avoid duplicates
         this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
             zone.removeEventListener('dragover', this.boundHandlers.dragOver);
             zone.removeEventListener('drop', this.boundHandlers.drop);
@@ -735,47 +591,28 @@ const TierListDragDrop = {
             zone.removeEventListener('dragleave', this.boundHandlers.dragLeave);
         });
 
-        // Make objects draggable (only if data-draggable="true")
-        const draggableItems = this.el.querySelectorAll('[data-draggable="true"]');
-        draggableItems.forEach((item, index) => {
-            const objectId = item.dataset.objectId;
-
-            // Only enable HTML5 drag and drop for non-touch devices or as fallback
-            if (!this.isTouchDevice) {
+        // Add desktop drag and drop for non-touch devices
+        if (!this.isTouchDevice) {
+            this.el.querySelectorAll('[data-draggable="true"]').forEach(item => {
                 item.draggable = true;
                 item.addEventListener('dragstart', this.boundHandlers.dragStart);
                 item.addEventListener('dragend', this.boundHandlers.dragEnd);
-            } else {
-                // Disable HTML5 drag and drop on touch devices to prevent conflicts
-                item.draggable = false;
-            }
-        });
+            });
 
-        // Make drop zones (only if data-drop-zone="true")
-        const dropZones = this.el.querySelectorAll('[data-drop-zone="true"]');
-
-        dropZones.forEach(zone => {
-            // Only add HTML5 drag events for non-touch devices
-            if (!this.isTouchDevice) {
+            this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
                 zone.addEventListener('dragover', this.boundHandlers.dragOver);
                 zone.addEventListener('drop', this.boundHandlers.drop);
                 zone.addEventListener('dragenter', this.boundHandlers.dragEnter);
                 zone.addEventListener('dragleave', this.boundHandlers.dragLeave);
-            }
-        });
+            });
+        }
     },
 
     handleDragStart(e) {
-        console.log('=== DESKTOP DRAG START ===');
-
-        // Find the closest element with data-object-id
         const draggableElement = e.target.closest('[data-object-id]');
-        const objectId = draggableElement ? draggableElement.dataset.objectId : null;
+        const objectId = draggableElement?.dataset.objectId;
 
-        console.log('Drag start - objectId:', objectId);
-
-        if (!objectId || objectId === '' || objectId === 'undefined') {
-            console.error('No valid objectId found for dragged element');
+        if (!objectId) {
             e.preventDefault();
             return;
         }
@@ -784,47 +621,40 @@ const TierListDragDrop = {
         e.target.classList.add('opacity-50');
         e.dataTransfer.effectAllowed = 'move';
 
-        // Set a custom drag image to prevent unwanted content from being included
+        // Set custom drag image
         const dragImage = draggableElement.cloneNode(true);
         dragImage.style.transform = 'rotate(5deg)';
         dragImage.style.opacity = '0.8';
         document.body.appendChild(dragImage);
         e.dataTransfer.setDragImage(dragImage, 40, 40);
 
-        // Clean up the drag image after a short delay
         setTimeout(() => {
             if (document.body.contains(dragImage)) {
                 document.body.removeChild(dragImage);
             }
         }, 0);
 
-        // Store the dragged element for position calculation
         this.draggedElement = draggableElement;
-
-        // Create and store the drop indicator
         this.createDropIndicator();
     },
 
     handleDragEnd(e) {
         e.target.classList.remove('opacity-50');
-        // Remove all drop zone highlights (only from active drop zones)
         this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
             this.highlightDropZone(zone, false, 'normal');
         });
-
-        // Remove drop indicator
         this.removeDropIndicator();
-
-        // Clear the dragged element reference
         this.draggedElement = null;
     },
 
     handleDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-
-        // Update drop indicator position
-        this.updateDropIndicator(e);
+        this.updateDropIndicator(
+            { x: e.clientX, y: e.clientY },
+            e.currentTarget,
+            this.draggedElement
+        );
     },
 
     handleDragEnter(e) {
@@ -846,355 +676,75 @@ const TierListDragDrop = {
         const objectId = e.dataTransfer.getData('text/plain');
         const targetTierId = e.currentTarget.dataset.tierId;
 
-        console.log('=== DESKTOP DROP ===');
-        console.log('objectId:', objectId, 'targetTierId:', targetTierId);
-        console.log('TIMESTAMP:', Date.now(), 'to verify this is the current code');
-
-
-
-        // Remove highlight
         this.highlightDropZone(e.currentTarget, false, 'normal');
 
-        // Validate objectId before sending
-        if (!objectId || objectId.trim() === '') {
+        if (!objectId?.trim()) {
             console.error('Invalid objectId:', objectId);
             return;
         }
 
-        // Calculate the position based on where the drop occurred
-        const position = this.calculateDropPosition(e, targetTierId);
-
-        console.log('Calculated position:', position);
-
-        // Get the original position of the dragged object
         const originalPosition = this.draggedElement ? parseInt(this.draggedElement.dataset.position) || 0 : -1;
-        console.log('Original position of dragged object:', originalPosition);
+        const originalTierId = this.draggedElement ? this.draggedElement.closest('[data-drop-zone="true"]')?.dataset.tierId : null;
 
-        // The calculated position is based on the visual layout (without dragged object).
-        // This position represents where we want to insert in the final layout.
-        // No adjustment needed - the backend will handle the move correctly.
+        const position = this.calculateDropPosition(
+            { x: e.clientX, y: e.clientY },
+            e.currentTarget,
+            this.draggedElement
+        );
 
-        let finalPosition = position;
-
-        // Special case: if we calculated the same position as the original,
-        // it means we're dropping in the same spot
-        if (position === originalPosition) {
-            console.log('Dropping in same position, skipping move');
-            return;
-        }
-
-        console.log(`FIXED VERSION: Using calculated position ${position} as final position (no adjustment needed)`);
-        finalPosition = position; // Fixed: removed faulty position adjustment logic
-
-        // DEBUGGING: Log the exact values being sent
-        console.log('SENDING TO BACKEND:', {
-            object_id: objectId,
-            tier_id: targetTierId,
-            position: finalPosition,
-            originalPosition: originalPosition
-        });
-
-        // Send event to LiveView
-        this.pushEvent('move_object', {
-            object_id: objectId,
-            tier_id: targetTierId, // targetTierId should always be set now
-            position: finalPosition
-        });
-
-
+        this.performMove(objectId, targetTierId, position, originalPosition, originalTierId);
     },
 
-    calculateDropPosition(dropEvent, targetTierId) {
-        console.log('=== DESKTOP POSITION CALCULATION ===');
+    // =============================================================================
+    // VISUAL FEEDBACK HELPERS
+    // =============================================================================
 
-        const dropZone = dropEvent.currentTarget;
-        const allObjectsInTier = Array.from(dropZone.querySelectorAll('[data-object-id]'));
-
-        console.log('All objects in tier:', allObjectsInTier.map(obj => ({
-            id: obj.dataset.objectId,
-            position: obj.dataset.position,
-            isDragged: obj === this.draggedElement
-        })));
-
-        console.log('Dragged element:', this.draggedElement ? this.draggedElement.dataset.objectId : 'null');
-
-        if (allObjectsInTier.length === 0) {
-            console.log('Empty tier, returning position 0');
-            return 0; // First object in the tier
-        }
-
-        // Sort ALL objects by their database position (including dragged object)
-        const sortedObjects = allObjectsInTier.sort((a, b) => {
-            const posA = parseInt(a.dataset.position) || 0;
-            const posB = parseInt(b.dataset.position) || 0;
-            return posA - posB;
+    highlightDropZones(highlight) {
+        this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
+            this.highlightDropZone(zone, highlight, 'background-only');
         });
+    },
 
-        console.log('Current objects in tier:', sortedObjects.map(obj => ({
-            id: obj.dataset.objectId,
-            position: obj.dataset.position
-        })));
-
-        // Get the drop coordinates
-        const dropX = dropEvent.clientX;
-        const dropY = dropEvent.clientY;
-
-        console.log('Drop coordinates:', { dropX, dropY });
-
-        // Group objects by visual rows (same logic as touch version)
-        const rows = [];
-        let currentRow = [];
-        let lastTop = null;
-
-        sortedObjects.forEach(obj => {
-            // Skip the dragged object for visual layout calculation
-            if (obj === this.draggedElement) return;
-
-            const rect = obj.getBoundingClientRect();
-            if (lastTop === null || Math.abs(rect.top - lastTop) <= 10) {
-                // Same row
-                currentRow.push({ element: obj, rect, position: parseInt(obj.dataset.position) || 0 });
-                lastTop = rect.top;
+    highlightCurrentDropZone(currentZone) {
+        this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
+            if (zone === currentZone) {
+                this.highlightDropZone(zone, true, 'hover');
             } else {
-                // New row
-                if (currentRow.length > 0) {
-                    rows.push(currentRow);
-                }
-                currentRow = [{ element: obj, rect, position: parseInt(obj.dataset.position) || 0 }];
-                lastTop = rect.top;
-            }
-        });
-        if (currentRow.length > 0) {
-            rows.push(currentRow);
-        }
-
-        console.log('Desktop grid layout:');
-        rows.forEach((row, rowIndex) => {
-            console.log(`  Row ${rowIndex}: [${row.map(obj => obj.position).join(', ')}] (Y: ${row[0].rect.top})`);
-        });
-
-        // Find which row the drop is in
-        let targetRow = null;
-        let targetRowIndex = -1;
-
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const firstRect = row[0].rect;
-
-            // Check if drop Y is within this row's bounds (with some tolerance)
-            if (dropY >= firstRect.top - 20 && dropY <= firstRect.bottom + 20) {
-                targetRow = row;
-                targetRowIndex = i;
-                break;
-            }
-        }
-
-        // If no specific row found, find the closest row
-        if (!targetRow) {
-            let minDistance = Infinity;
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const rowCenterY = row[0].rect.top + (row[0].rect.height / 2);
-                const distance = Math.abs(dropY - rowCenterY);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    targetRow = row;
-                    targetRowIndex = i;
-                }
-            }
-        }
-
-        console.log(`Target row: ${targetRowIndex} with positions [${targetRow.map(obj => obj.position).join(', ')}]`);
-
-        // Find where to insert within the target row based on drop X position
-        let insertPosition = sortedObjects.length; // Default to end
-
-        if (targetRow) {
-            // Find insertion point within the target row based on X position
-            let targetObject = null;
-
-            for (let i = 0; i < targetRow.length; i++) {
-                const objRect = targetRow[i].rect;
-                const objCenterX = objRect.left + objRect.width / 2;
-
-                if (dropX < objCenterX) {
-                    targetObject = targetRow[i];
-                    break;
-                }
-            }
-
-            if (targetObject) {
-                // Insert before this object - we want to take its position
-                insertPosition = targetObject.position;
-                console.log(`Inserting before object at position ${targetObject.position} → final position: ${insertPosition}`);
-            } else {
-                // Insert after the last object in this row
-                const lastInRow = targetRow[targetRow.length - 1];
-                insertPosition = lastInRow.position + 1;
-                console.log(`Inserting after last object in row (position ${lastInRow.position}) → final position: ${insertPosition}`);
-            }
-        }
-
-
-
-        console.log('=== END DESKTOP POSITION CALCULATION ===');
-        return insertPosition;
-    },
-
-    createDropIndicator() {
-        // Create a vertical line indicator
-        this.dropIndicator = document.createElement('div');
-        this.dropIndicator.className = 'drop-indicator';
-        this.dropIndicator.style.cssText = `
-            position: fixed;
-            width: 3px;
-            background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
-            border-radius: 2px;
-            box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
-            z-index: 1000;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            display: none;
-        `;
-        document.body.appendChild(this.dropIndicator);
-    },
-
-    removeDropIndicator() {
-        if (this.dropIndicator) {
-
-            this.dropIndicator.remove();
-            this.dropIndicator = null;
-        }
-
-        // Also remove any stray indicators that might exist
-        document.querySelectorAll('.drop-indicator').forEach(indicator => {
-            if (indicator !== this.dropIndicator) {
-
-                indicator.remove();
+                this.highlightDropZone(zone, true, 'background-only');
             }
         });
     },
 
-    updateDropIndicator(dragEvent) {
-        if (!this.dropIndicator || !this.draggedElement) return;
+    highlightDropZone(zone, highlight, type = 'normal') {
+        if (!zone) return;
 
-        const dropZone = dragEvent.currentTarget;
-        const allObjectsInTier = Array.from(dropZone.querySelectorAll('[data-object-id]'));
+        const tierColor = zone.closest('.tier-row')?.style.backgroundColor || '#ffffff';
 
-        const dropX = dragEvent.clientX;
-        const dropY = dragEvent.clientY;
+        if (highlight) {
+            const lightenedColor = this.lightenColor(tierColor, type === 'hover' ? 0.3 : 0.2);
+            zone.style.backgroundColor = lightenedColor;
 
-        let showIndicator = false;
-        let indicatorX = 0;
-        let indicatorY = 0;
-
-        if (allObjectsInTier.length === 0) {
-            // Show indicator in the center of empty drop zone
-            const dropZoneRect = dropZone.getBoundingClientRect();
-            indicatorX = dropZoneRect.left + 20; // 20px from left edge
-            indicatorY = dropZoneRect.top + 10;
-            const indicatorHeight = Math.max(60, dropZoneRect.height - 20);
-            this.dropIndicator.style.height = `${indicatorHeight}px`;
-            showIndicator = true;
+            if (type === 'normal') {
+                zone.style.border = '2px dashed rgba(59, 130, 246, 0.5)';
+            } else if (type === 'hover') {
+                zone.style.border = '2px solid #3b82f6';
+                zone.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.3)';
+            }
         } else {
-            // Use the same row-aware logic as position calculation
-            const sortedObjects = allObjectsInTier.sort((a, b) => {
-                const posA = parseInt(a.dataset.position) || 0;
-                const posB = parseInt(b.dataset.position) || 0;
-                return posA - posB;
-            });
-
-            // Group objects by visual rows (skip dragged object)
-            const rows = [];
-            let currentRow = [];
-            let lastTop = null;
-
-            sortedObjects.forEach(obj => {
-                if (obj === this.draggedElement) return;
-
-                const rect = obj.getBoundingClientRect();
-                if (lastTop === null || Math.abs(rect.top - lastTop) <= 10) {
-                    currentRow.push({ element: obj, rect, position: parseInt(obj.dataset.position) || 0 });
-                    lastTop = rect.top;
-                } else {
-                    if (currentRow.length > 0) {
-                        rows.push(currentRow);
-                    }
-                    currentRow = [{ element: obj, rect, position: parseInt(obj.dataset.position) || 0 }];
-                    lastTop = rect.top;
-                }
-            });
-            if (currentRow.length > 0) {
-                rows.push(currentRow);
-            }
-
-            // Find target row
-            let targetRow = null;
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                const firstRect = row[0].rect;
-                if (dropY >= firstRect.top - 20 && dropY <= firstRect.bottom + 20) {
-                    targetRow = row;
-                    break;
-                }
-            }
-
-            // If no specific row found, find closest row
-            if (!targetRow && rows.length > 0) {
-                let minDistance = Infinity;
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    const rowCenterY = row[0].rect.top + (row[0].rect.height / 2);
-                    const distance = Math.abs(dropY - rowCenterY);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        targetRow = row;
-                    }
-                }
-            }
-
-            if (targetRow) {
-                // Find insertion point within the target row
-                let targetObject = null;
-                for (let i = 0; i < targetRow.length; i++) {
-                    const objRect = targetRow[i].rect;
-                    const objCenterX = objRect.left + objRect.width / 2;
-                    if (dropX < objCenterX) {
-                        targetObject = targetRow[i];
-                        break;
-                    }
-                }
-
-                if (targetObject) {
-                    // Position indicator to the left of this object
-                    indicatorX = targetObject.rect.left - 8;
-                    indicatorY = targetObject.rect.top;
-                    const indicatorHeight = targetObject.rect.height;
-                    this.dropIndicator.style.height = `${indicatorHeight}px`;
-                    showIndicator = true;
-                } else {
-                    // Position at the end of this row
-                    const lastInRow = targetRow[targetRow.length - 1];
-                    indicatorX = lastInRow.rect.right + 8;
-                    indicatorY = lastInRow.rect.top;
-                    const indicatorHeight = lastInRow.rect.height;
-                    this.dropIndicator.style.height = `${indicatorHeight}px`;
-                    showIndicator = true;
-                }
-            }
+            zone.style.backgroundColor = '';
+            zone.style.border = '';
+            zone.style.boxShadow = '';
         }
+    },
 
-        if (showIndicator) {
-            this.dropIndicator.style.display = 'block';
-            this.dropIndicator.style.left = `${indicatorX}px`;
-            this.dropIndicator.style.top = `${indicatorY}px`;
-            this.dropIndicator.style.opacity = '1';
-        } else {
-            this.dropIndicator.style.display = 'none';
-            this.dropIndicator.style.opacity = '0';
-        }
+    lightenColor(color, amount) {
+        const colorMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (!colorMatch) return color;
+
+        const [, r, g, b] = colorMatch.map(Number);
+        const lighten = (c) => Math.min(255, Math.round(c + (255 - c) * amount));
+
+        return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
     }
 };
 
