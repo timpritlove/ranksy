@@ -85,14 +85,31 @@ defmodule Ranksy.AccessTracker do
     # Set new timer
     timer_ref = Process.send_after(self(), {:flush_access, key}, state.flush_delay)
 
-    # Update pending record
-    pending_record = %{
-      tier_list_id: tier_list_id,
-      token_type: token_type,
-      token_value: token_value,
-      last_accessed_at: now,
-      timer_ref: timer_ref
-    }
+    # Update pending record with total access count
+    pending_record =
+      case Map.get(state.pending, key) do
+        nil ->
+          # First access in this debounce period - need to get current count from DB
+          current_count = get_current_access_count(tier_list_id, token_type)
+
+          %{
+            tier_list_id: tier_list_id,
+            token_type: token_type,
+            token_value: token_value,
+            last_accessed_at: now,
+            total_access_count: current_count + 1,
+            timer_ref: timer_ref
+          }
+
+        existing_record ->
+          # Additional access in this debounce period - just increment our total
+          %{
+            existing_record
+            | last_accessed_at: now,
+              total_access_count: existing_record.total_access_count + 1,
+              timer_ref: timer_ref
+          }
+      end
 
     new_pending = Map.put(state.pending, key, pending_record)
     {:noreply, %{state | pending: new_pending}}
@@ -128,7 +145,8 @@ defmodule Ranksy.AccessTracker do
               record.tier_list_id,
               record.token_type,
               record.token_value,
-              record.last_accessed_at
+              record.last_accessed_at,
+              record.total_access_count
             )
           rescue
             error ->
@@ -145,5 +163,12 @@ defmodule Ranksy.AccessTracker do
   defp enabled? do
     Application.get_env(:ranksy, :access_tracking, [])
     |> Keyword.get(:enabled, true)
+  end
+
+  defp get_current_access_count(tier_list_id, token_type) do
+    case Ranksy.TierLists.get_access_stats(tier_list_id, token_type) do
+      {_time, count} -> count
+      nil -> 0
+    end
   end
 end

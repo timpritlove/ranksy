@@ -77,6 +77,7 @@ config :ranksy, :uploads,
 # update_interval: How often to refresh access times in edit view (in ms)
 config :ranksy, :access_tracking,
   enabled: true,
+  # 5 seconds for production - better performance
   flush_delay: 5_000,
   update_interval: 30_000
 

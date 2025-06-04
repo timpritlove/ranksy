@@ -196,9 +196,15 @@
               <label class="block text-sm font-medium text-gray-300">
                 Edit URL (you can modify):
               </label>
-              <span class="text-xs text-gray-400">
-                Last accessed: {relative_time(Map.get(@access_times, "edit"))}
-              </span>
+              <div class="text-xs text-gray-400 text-right">
+                <%= case Map.get(@access_stats, "edit") do %>
+                  <% %{last_accessed_at: time, access_count: count} -> %>
+                    <div>Last accessed: {relative_time(time)}</div>
+                    <div>Total accesses: {count}</div>
+                  <% _ -> %>
+                    <div>Never accessed</div>
+                <% end %>
+              </div>
             </div>
             <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
               <code class="text-green-400 text-sm break-all">
@@ -211,9 +217,15 @@
               <label class="block text-sm font-medium text-gray-300">
                 Use URL (can move objects, no editing):
               </label>
-              <span class="text-xs text-gray-400">
-                Last accessed: {relative_time(Map.get(@access_times, "use"))}
-              </span>
+              <div class="text-xs text-gray-400 text-right">
+                <%= case Map.get(@access_stats, "use") do %>
+                  <% %{last_accessed_at: time, access_count: count} -> %>
+                    <div>Last accessed: {relative_time(time)}</div>
+                    <div>Total accesses: {count}</div>
+                  <% _ -> %>
+                    <div>Never accessed</div>
+                <% end %>
+              </div>
             </div>
             <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
               <code class="text-yellow-400 text-sm break-all">
@@ -226,9 +238,15 @@
               <label class="block text-sm font-medium text-gray-300">
                 View-only URL (read-only with live updates):
               </label>
-              <span class="text-xs text-gray-400">
-                Last accessed: {relative_time(Map.get(@access_times, "view"))}
-              </span>
+              <div class="text-xs text-gray-400 text-right">
+                <%= case Map.get(@access_stats, "view") do %>
+                  <% %{last_accessed_at: time, access_count: count} -> %>
+                    <div>Last accessed: {relative_time(time)}</div>
+                    <div>Total accesses: {count}</div>
+                  <% _ -> %>
+                    <div>Never accessed</div>
+                <% end %>
+              </div>
             </div>
             <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
               <code class="text-blue-400 text-sm break-all">

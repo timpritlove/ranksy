@@ -83,3 +83,11 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Development-specific access tracking configuration for faster feedback
+config :ranksy, :access_tracking,
+  enabled: true,
+  # 0.5 seconds - fast enough for dev feedback without being too aggressive
+  flush_delay: 500,
+  # Update every 5 seconds instead of 30 to keep relative times fresh
+  update_interval: 5_000

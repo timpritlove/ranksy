@@ -7,7 +7,15 @@ defmodule RanksyWeb.TierListLive do
 
   @impl true
   def mount(%{"edit_token" => edit_token}, _session, socket) do
-    case TierLists.get_tier_list_by_edit_token_with_tracking(edit_token) do
+    # Only track access when connected (WebSocket), not during initial HTTP request
+    tier_list =
+      if connected?(socket) do
+        TierLists.get_tier_list_by_edit_token_with_tracking(edit_token)
+      else
+        TierLists.get_tier_list_by_edit_token(edit_token)
+      end
+
+    case tier_list do
       nil ->
         {:ok, push_navigate(socket, to: ~p"/")}
 
@@ -19,8 +27,8 @@ defmodule RanksyWeb.TierListLive do
         max_entries = UploadConfig.max_entries()
         max_file_size = UploadConfig.max_file_size()
 
-        # Get access times for display in edit mode
-        access_times = TierLists.get_all_accesses(tier_list.id)
+        # Get access stats for display in edit mode
+        access_stats = TierLists.get_all_access_stats(tier_list.id)
 
         socket =
           socket
@@ -30,7 +38,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:mode, :edit)
           |> assign(:max_upload_entries, max_entries)
           |> assign(:editing_object, nil)
-          |> assign(:access_times, access_times)
+          |> assign(:access_stats, access_stats)
           |> allow_upload(:images,
             accept: ~w(.jpg .jpeg .png .gif .webp),
             max_entries: max_entries,
@@ -49,7 +57,15 @@ defmodule RanksyWeb.TierListLive do
   end
 
   def mount(%{"view_token" => view_token}, _session, socket) do
-    case TierLists.get_tier_list_by_view_token_with_tracking(view_token) do
+    # Only track access when connected (WebSocket), not during initial HTTP request
+    tier_list =
+      if connected?(socket) do
+        TierLists.get_tier_list_by_view_token_with_tracking(view_token)
+      else
+        TierLists.get_tier_list_by_view_token(view_token)
+      end
+
+    case tier_list do
       nil ->
         {:ok, push_navigate(socket, to: ~p"/")}
 
@@ -65,13 +81,22 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:objects, TierLists.list_objects(tier_list.id))
           |> assign(:mode, :view)
           |> assign(:editing_object, nil)
+          |> assign(:access_stats, %{})
 
         {:ok, socket}
     end
   end
 
   def mount(%{"use_token" => use_token}, _session, socket) do
-    case TierLists.get_tier_list_by_use_token_with_tracking(use_token) do
+    # Only track access when connected (WebSocket), not during initial HTTP request
+    tier_list =
+      if connected?(socket) do
+        TierLists.get_tier_list_by_use_token_with_tracking(use_token)
+      else
+        TierLists.get_tier_list_by_use_token(use_token)
+      end
+
+    case tier_list do
       nil ->
         {:ok, push_navigate(socket, to: ~p"/")}
 
@@ -87,6 +112,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:objects, TierLists.list_objects(tier_list.id))
           |> assign(:mode, :use)
           |> assign(:editing_object, nil)
+          |> assign(:access_stats, %{})
 
         {:ok, socket}
     end
@@ -236,29 +262,50 @@ defmodule RanksyWeb.TierListLive do
   end
 
   def handle_info(:update_access_times, socket) do
-    # Only update access times in edit mode
+    # Only update access stats in edit mode
     if socket.assigns.mode == :edit do
-      access_times = TierLists.get_all_accesses(socket.assigns.tier_list.id)
+      access_stats = TierLists.get_all_access_stats(socket.assigns.tier_list.id)
 
       # Schedule the next update
       schedule_access_time_update()
 
-      {:noreply, assign(socket, :access_times, access_times)}
+      {:noreply, assign(socket, :access_stats, access_stats)}
     else
       {:noreply, socket}
     end
   end
 
-  def handle_info({:access_time_updated, token_type, last_accessed_at}, socket) do
-    # Only update access times in edit mode
-    if socket.assigns.mode == :edit do
-      # Update the specific access time in the current access_times map
-      updated_access_times = Map.put(socket.assigns.access_times, token_type, last_accessed_at)
+  def handle_info({:access_updated, token_type, last_accessed_at, access_count}, socket) do
+    # Always update access stats (they're only displayed in edit mode anyway)
+    current_access_stats = socket.assigns[:access_stats] || %{}
 
-      {:noreply, assign(socket, :access_times, updated_access_times)}
-    else
-      {:noreply, socket}
-    end
+    updated_access_stats =
+      Map.put(current_access_stats, token_type, %{
+        last_accessed_at: last_accessed_at,
+        access_count: access_count
+      })
+
+    {:noreply, assign(socket, :access_stats, updated_access_stats)}
+  end
+
+  # Handle legacy access_time_updated messages for backward compatibility
+  def handle_info({:access_time_updated, token_type, last_accessed_at}, socket) do
+    # Always update access stats (they're only displayed in edit mode anyway)
+    current_access_stats = socket.assigns[:access_stats] || %{}
+
+    existing_count =
+      case Map.get(current_access_stats, token_type) do
+        %{access_count: count} -> count
+        _ -> 0
+      end
+
+    updated_access_stats =
+      Map.put(current_access_stats, token_type, %{
+        last_accessed_at: last_accessed_at,
+        access_count: existing_count
+      })
+
+    {:noreply, assign(socket, :access_stats, updated_access_stats)}
   end
 
   defp handle_progress(:images, entry, socket) do

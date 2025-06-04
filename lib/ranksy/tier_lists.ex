@@ -309,27 +309,40 @@ defmodule Ranksy.TierLists do
   Records access to a tier list directly to the database.
   Used internally by AccessTracker for the actual DB write.
   """
-  def record_access_direct(tier_list_id, token_type, token_value, last_accessed_at) do
+  def record_access_direct(
+        tier_list_id,
+        token_type,
+        token_value,
+        last_accessed_at,
+        total_access_count \\ 1
+      ) do
     result =
       %TierListAccess{}
       |> TierListAccess.changeset(%{
         tier_list_id: tier_list_id,
         token_type: token_type,
         token_value: token_value,
-        last_accessed_at: last_accessed_at
+        last_accessed_at: last_accessed_at,
+        access_count: total_access_count
       })
       |> Repo.insert(
-        on_conflict: [set: [last_accessed_at: last_accessed_at, updated_at: DateTime.utc_now()]],
+        on_conflict: [
+          set: [
+            last_accessed_at: last_accessed_at,
+            access_count: total_access_count,
+            updated_at: DateTime.utc_now()
+          ]
+        ],
         conflict_target: [:tier_list_id, :token_type]
       )
 
-    # Broadcast access time update via PubSub
+    # Broadcast access time and count update via PubSub
     case result do
       {:ok, _} ->
         Phoenix.PubSub.broadcast(
           Ranksy.PubSub,
           "tier_list:#{tier_list_id}",
-          {:access_time_updated, token_type, last_accessed_at}
+          {:access_updated, token_type, last_accessed_at, total_access_count}
         )
 
       _ ->
@@ -351,6 +364,17 @@ defmodule Ranksy.TierLists do
   end
 
   @doc """
+  Gets the access stats (last access time and count) for a tier list by token type.
+  """
+  def get_access_stats(tier_list_id, token_type) do
+    from(a in TierListAccess,
+      where: a.tier_list_id == ^tier_list_id and a.token_type == ^token_type,
+      select: {a.last_accessed_at, a.access_count}
+    )
+    |> Repo.one()
+  end
+
+  @doc """
   Gets all access times for a tier list.
   """
   def get_all_accesses(tier_list_id) do
@@ -360,6 +384,24 @@ defmodule Ranksy.TierLists do
     )
     |> Repo.all()
     |> Enum.into(%{}, fn %{token_type: type, last_accessed_at: time} -> {type, time} end)
+  end
+
+  @doc """
+  Gets all access stats (times and counts) for a tier list.
+  """
+  def get_all_access_stats(tier_list_id) do
+    from(a in TierListAccess,
+      where: a.tier_list_id == ^tier_list_id,
+      select: %{
+        token_type: a.token_type,
+        last_accessed_at: a.last_accessed_at,
+        access_count: a.access_count
+      }
+    )
+    |> Repo.all()
+    |> Enum.into(%{}, fn %{token_type: type, last_accessed_at: time, access_count: count} ->
+      {type, %{last_accessed_at: time, access_count: count}}
+    end)
   end
 
   @doc """
