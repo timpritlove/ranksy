@@ -140,11 +140,11 @@
               </th>
 
               <th class="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                View Access
+                Use Access
               </th>
 
               <th class="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                Use Access
+                View Access
               </th>
 
               <th class="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -204,12 +204,12 @@
 
                 <td class="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs">
                   <div class="text-gray-300">
-                    <span class="text-blue-400 font-medium">{tier_list.view_access_count}</span>
+                    <span class="text-yellow-400 font-medium">{tier_list.use_access_count}</span>
                   </div>
                   <div class="text-xs text-gray-500 hidden sm:block">
-                    {if tier_list.view_last_access,
+                    {if tier_list.use_last_access,
                       do:
-                        tier_list.view_last_access
+                        tier_list.use_last_access
                         |> DateTime.from_naive!("Etc/UTC")
                         |> Calendar.strftime("%m/%d"),
                       else: "Never"}
@@ -218,12 +218,12 @@
 
                 <td class="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs">
                   <div class="text-gray-300">
-                    <span class="text-yellow-400 font-medium">{tier_list.use_access_count}</span>
+                    <span class="text-blue-400 font-medium">{tier_list.view_access_count}</span>
                   </div>
                   <div class="text-xs text-gray-500 hidden sm:block">
-                    {if tier_list.use_last_access,
+                    {if tier_list.view_last_access,
                       do:
-                        tier_list.use_last_access
+                        tier_list.view_last_access
                         |> DateTime.from_naive!("Etc/UTC")
                         |> Calendar.strftime("%m/%d"),
                       else: "Never"}
@@ -312,7 +312,7 @@
                   <button
                     phx-click="delete_tier_list"
                     phx-value-id={tier_list.id}
-                    data-confirm={"⚠️ DANGER: This will permanently delete the tier list '#{tier_list.title}' and ALL #{tier_list.object_count} objects. This action cannot be undone. Are you absolutely sure?"}
+                    data-confirm={"⚠️ DANGER: This will permanently delete the tier list '#{tier_list.title}' and all its objects. This action cannot be undone. Are you absolutely sure?"}
                     class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors border border-red-400/30"
                     title="Delete tier list and all objects"
                   >
@@ -332,9 +332,6 @@
                     </svg>
                     <span class="hidden sm:inline">Delete</span>
                   </button>
-                  <div class="text-xs text-gray-500 mt-1 hidden sm:block">
-                    {tier_list.object_count} objects
-                  </div>
                 </td>
               </tr>
             <% end %>
