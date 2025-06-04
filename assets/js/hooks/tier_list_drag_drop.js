@@ -17,8 +17,8 @@ const TierListDragDrop = {
             item.removeEventListener('dragend', this.handleDragEnd);
         });
 
-        // Make objects draggable
-        const draggableItems = this.el.querySelectorAll('[data-draggable]');
+        // Make objects draggable (only if data-draggable="true")
+        const draggableItems = this.el.querySelectorAll('[data-draggable="true"]');
         console.log('Setting up drag and drop for', draggableItems.length, 'items');
 
         draggableItems.forEach((item, index) => {
@@ -34,8 +34,8 @@ const TierListDragDrop = {
             item.addEventListener('dragend', this.handleDragEnd.bind(this));
         });
 
-        // Make drop zones
-        const dropZones = this.el.querySelectorAll('[data-drop-zone]');
+        // Make drop zones (only if data-drop-zone="true")
+        const dropZones = this.el.querySelectorAll('[data-drop-zone="true"]');
         console.log('Setting up', dropZones.length, 'drop zones');
 
         dropZones.forEach(zone => {
@@ -78,8 +78,8 @@ const TierListDragDrop = {
 
     handleDragEnd(e) {
         e.target.classList.remove('opacity-50');
-        // Remove all drop zone highlights
-        this.el.querySelectorAll('[data-drop-zone]').forEach(zone => {
+        // Remove all drop zone highlights (only from active drop zones)
+        this.el.querySelectorAll('[data-drop-zone="true"]').forEach(zone => {
             zone.classList.remove('bg-blue-50', 'border-blue-300');
         });
 

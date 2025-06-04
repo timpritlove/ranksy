@@ -20,15 +20,18 @@
 <!-- Tier Objects -->
         <div
           class="tier-objects flex-1 min-h-[140px] p-4 flex flex-wrap gap-3 items-center"
-          data-drop-zone="true"
+          data-drop-zone={if @mode != :view, do: "true", else: "false"}
           data-tier-id={tier.id}
         >
           <%= for object <- objects_for_tier(@objects, tier.id) do %>
             <div
-              class="tier-object group relative bg-white/20 backdrop-blur-sm rounded-lg p-2 cursor-move hover:bg-white/30 transition-all select-none"
-              data-draggable="true"
+              class={[
+                "tier-object group relative bg-white/20 backdrop-blur-sm rounded-lg p-2 transition-all select-none",
+                if(@mode != :view, do: "cursor-move hover:bg-white/30", else: "cursor-default")
+              ]}
+              data-draggable={if @mode != :view, do: "true", else: "false"}
               data-object-id={object.id}
-              draggable="true"
+              draggable={@mode != :view}
             >
               <img
                 src={~p"/images/#{object.id}"}
@@ -64,15 +67,18 @@
       <!-- Holding Zone Objects -->
       <div
         class="tier-objects w-full min-h-[160px] p-4 flex flex-wrap gap-3 items-center bg-gray-50"
-        data-drop-zone="true"
+        data-drop-zone={if @mode != :view, do: "true", else: "false"}
         data-tier-id={Ranksy.TierLists.holding_zone_id()}
       >
         <%= for object <- unassigned_objects(@objects) do %>
           <div
-            class="tier-object group relative bg-white rounded-lg p-2 cursor-move hover:shadow-md transition-shadow select-none border border-gray-200"
-            data-draggable="true"
+            class={[
+              "tier-object group relative bg-white rounded-lg p-2 transition-shadow select-none border border-gray-200",
+              if(@mode != :view, do: "cursor-move hover:shadow-md", else: "cursor-default")
+            ]}
+            data-draggable={if @mode != :view, do: "true", else: "false"}
             data-object-id={object.id}
-            draggable="true"
+            draggable={@mode != :view}
           >
             <img
               src={~p"/images/#{object.id}"}
