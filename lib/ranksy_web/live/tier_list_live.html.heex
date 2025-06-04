@@ -197,6 +197,16 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-2">
+              Use URL (can move objects, no editing):
+            </label>
+            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
+              <code class="text-yellow-400 text-sm break-all">
+                {url(~p"/use/#{@tier_list.use_token}")}
+              </code>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
               View-only URL (read-only with live updates):
             </label>
             <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
@@ -209,7 +219,11 @@
       </div>
     <% else %>
       <div class="text-center">
-        <p class="text-gray-400 text-lg">View-only mode - Live updates enabled</p>
+        <%= if @mode == :view do %>
+          <p class="text-gray-400 text-lg">View-only mode - Live updates enabled</p>
+        <% else %>
+          <p class="text-gray-400 text-lg">Use mode - You can move objects but not edit them</p>
+        <% end %>
       </div>
     <% end %>
   </div>

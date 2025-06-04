@@ -7,6 +7,7 @@ defmodule Ranksy.TierLists.TierList do
     field :slug, :string
     field :edit_token, :string
     field :view_token, :string
+    field :use_token, :string
 
     has_many :tiers, Ranksy.TierLists.Tier, on_delete: :delete_all
     has_many :objects, Ranksy.TierLists.Object, on_delete: :delete_all
@@ -25,6 +26,7 @@ defmodule Ranksy.TierLists.TierList do
     |> unique_constraint(:slug)
     |> unique_constraint(:edit_token)
     |> unique_constraint(:view_token)
+    |> unique_constraint(:use_token)
   end
 
   defp put_slug(changeset) do
@@ -38,6 +40,7 @@ defmodule Ranksy.TierLists.TierList do
     changeset
     |> put_change(:edit_token, generate_token())
     |> put_change(:view_token, generate_token())
+    |> put_change(:use_token, generate_token())
   end
 
   defp generate_slug(title) do

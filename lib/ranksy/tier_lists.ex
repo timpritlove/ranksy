@@ -43,6 +43,13 @@ defmodule Ranksy.TierLists do
   end
 
   @doc """
+  Gets a single tier_list by use token.
+  """
+  def get_tier_list_by_use_token(use_token) do
+    Repo.get_by(TierList, use_token: use_token)
+  end
+
+  @doc """
   Creates a tier_list with default tiers.
   """
   def create_tier_list(attrs \\ %{}) do

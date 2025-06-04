@@ -61,12 +61,38 @@ defmodule RanksyWeb.TierListLive do
     end
   end
 
+  def mount(%{"use_token" => use_token}, _session, socket) do
+    case TierLists.get_tier_list_by_use_token(use_token) do
+      nil ->
+        {:ok, push_navigate(socket, to: ~p"/")}
+
+      tier_list ->
+        if connected?(socket) do
+          Phoenix.PubSub.subscribe(Ranksy.PubSub, "tier_list:#{tier_list.id}")
+        end
+
+        socket =
+          socket
+          |> assign(:tier_list, tier_list)
+          |> assign(:tiers, TierLists.list_tiers(tier_list.id))
+          |> assign(:objects, TierLists.list_objects(tier_list.id))
+          |> assign(:mode, :use)
+          |> assign(:editing_object, nil)
+
+        {:ok, socket}
+    end
+  end
+
   @impl true
   def handle_event("validate", _params, socket) do
     {:noreply, socket}
   end
 
   def handle_event("save_images", _params, socket) when socket.assigns.mode == :view do
+    {:noreply, socket}
+  end
+
+  def handle_event("save_images", _params, socket) when socket.assigns.mode == :use do
     {:noreply, socket}
   end
 
@@ -117,6 +143,11 @@ defmodule RanksyWeb.TierListLive do
     {:noreply, socket}
   end
 
+  def handle_event("edit_object", %{"object_id" => _object_id}, socket)
+      when socket.assigns.mode == :use do
+    {:noreply, socket}
+  end
+
   def handle_event("edit_object", %{"object_id" => object_id}, socket) do
     object = TierLists.get_object_with_image(object_id)
     {:noreply, assign(socket, :editing_object, object)}
@@ -126,8 +157,13 @@ defmodule RanksyWeb.TierListLive do
     {:noreply, assign(socket, :editing_object, nil)}
   end
 
-  def handle_event("update_object_name", %{"object_id" => object_id, "name" => name}, socket)
+  def handle_event("update_object_name", %{"object_id" => _object_id, "name" => _name}, socket)
       when socket.assigns.mode == :view do
+    {:noreply, socket}
+  end
+
+  def handle_event("update_object_name", %{"object_id" => _object_id, "name" => _name}, socket)
+      when socket.assigns.mode == :use do
     {:noreply, socket}
   end
 
@@ -153,6 +189,11 @@ defmodule RanksyWeb.TierListLive do
 
   def handle_event("delete_object", %{"object_id" => _object_id}, socket)
       when socket.assigns.mode == :view do
+    {:noreply, socket}
+  end
+
+  def handle_event("delete_object", %{"object_id" => _object_id}, socket)
+      when socket.assigns.mode == :use do
     {:noreply, socket}
   end
 

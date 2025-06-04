@@ -20,6 +20,7 @@ defmodule RanksyWeb.Router do
     live "/", HomeLive
     live "/edit/:edit_token", TierListLive
     live "/view/:view_token", TierListLive
+    live "/use/:use_token", TierListLive
     get "/images/:id", ImageController, :show
   end
 
