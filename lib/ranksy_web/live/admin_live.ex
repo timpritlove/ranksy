@@ -2,6 +2,7 @@ defmodule RanksyWeb.AdminLive do
   use RanksyWeb, :live_view
 
   alias Ranksy.TierLists
+  alias Ranksy.Cldr
 
   @impl true
   def mount(_params, _session, socket) do
@@ -13,6 +14,7 @@ defmodule RanksyWeb.AdminLive do
       |> assign(:sort_by, :inserted_at)
       |> assign(:sort_order, :desc)
       |> assign(:page_title, "Admin - Tier Lists")
+      |> assign(:locale, "en")
 
     {:ok, socket}
   end
@@ -38,6 +40,15 @@ defmodule RanksyWeb.AdminLive do
       |> assign(:tier_lists, sorted_tier_lists)
       |> assign(:sort_by, field_atom)
       |> assign(:sort_order, new_order)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("toggle_locale", _params, socket) do
+    new_locale = if socket.assigns.locale == "en", do: "de", else: "en"
+
+    socket = assign(socket, :locale, new_locale)
 
     {:noreply, socket}
   end
@@ -93,18 +104,48 @@ defmodule RanksyWeb.AdminLive do
 
   defp format_file_size(size), do: "#{Float.round(size / (1024 * 1024 * 1024), 1)} GB"
 
-  defp format_datetime(nil), do: "Never"
+  defp format_datetime(nil, _locale), do: "Never"
 
-  defp format_datetime(%NaiveDateTime{} = naive_datetime) do
-    naive_datetime
-    |> DateTime.from_naive!("Etc/UTC")
-    |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
+  defp format_datetime(%NaiveDateTime{} = naive_datetime, locale) do
+    datetime = DateTime.from_naive!(naive_datetime, "Etc/UTC")
+    format_datetime_with_cldr(datetime, locale)
   end
 
-  defp format_datetime(%DateTime{} = datetime) do
+  defp format_datetime(%DateTime{} = datetime, locale) do
     datetime
     |> DateTime.shift_zone!("Etc/UTC")
-    |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
+    |> format_datetime_with_cldr(locale)
+  end
+
+  defp format_datetime_with_cldr(datetime, locale) do
+    case Cldr.DateTime.to_string(datetime, locale: locale, format: :medium) do
+      {:ok, formatted} ->
+        formatted
+
+      {:error, _} ->
+        # Fallback to basic formatting if CLDR fails
+        Calendar.strftime(datetime, "%Y-%m-%d %H:%M:%S UTC")
+    end
+  end
+
+  defp format_date_short(nil, _locale), do: "Never"
+
+  defp format_date_short(%NaiveDateTime{} = naive_datetime, locale) do
+    datetime = DateTime.from_naive!(naive_datetime, "Etc/UTC")
+    format_date_short_with_cldr(datetime, locale)
+  end
+
+  defp format_date_short_with_cldr(datetime, locale) do
+    date = DateTime.to_date(datetime)
+
+    case Cldr.Date.to_string(date, locale: locale, format: :short) do
+      {:ok, formatted} ->
+        formatted
+
+      {:error, _} ->
+        # Fallback to basic formatting if CLDR fails
+        Calendar.strftime(datetime, "%m/%d/%y")
+    end
   end
 
   defp sort_icon(current_field, target_field, current_order) do

@@ -13,6 +13,27 @@
           <div class="text-xs sm:text-sm text-gray-400">
             Total: {length(@tier_lists)} tier lists
           </div>
+          <button
+            phx-click="toggle_locale"
+            class="inline-flex items-center px-2 sm:px-3 py-2 border border-gray-600 rounded-md text-xs sm:text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 hover:text-white transition-colors"
+            title={"Switch to #{if @locale == "en", do: "German", else: "English"}"}
+          >
+            <svg
+              class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+              >
+              </path>
+            </svg>
+            {if @locale == "en", do: "🇺🇸 EN", else: "🇩🇪 DE"}
+          </button>
           <.link
             navigate={~p"/"}
             class="inline-flex items-center px-2 sm:px-3 py-2 border border-gray-600 rounded-md text-xs sm:text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 hover:text-white transition-colors"
@@ -171,12 +192,10 @@
 
                 <td class="px-2 sm:px-3 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-300">
                   <div class="hidden lg:block">
-                    {format_datetime(tier_list.inserted_at)}
+                    {format_datetime(tier_list.inserted_at, @locale)}
                   </div>
                   <div class="lg:hidden">
-                    {tier_list.inserted_at
-                    |> DateTime.from_naive!("Etc/UTC")
-                    |> Calendar.strftime("%m/%d/%y")}
+                    {format_date_short(tier_list.inserted_at, @locale)}
                   </div>
                 </td>
 
@@ -193,12 +212,7 @@
                     <span class="text-green-400 font-medium">{tier_list.edit_access_count}</span>
                   </div>
                   <div class="text-xs text-gray-500 hidden sm:block">
-                    {if tier_list.edit_last_access,
-                      do:
-                        tier_list.edit_last_access
-                        |> DateTime.from_naive!("Etc/UTC")
-                        |> Calendar.strftime("%m/%d"),
-                      else: "Never"}
+                    {format_date_short(tier_list.edit_last_access, @locale)}
                   </div>
                 </td>
 
@@ -207,12 +221,7 @@
                     <span class="text-yellow-400 font-medium">{tier_list.use_access_count}</span>
                   </div>
                   <div class="text-xs text-gray-500 hidden sm:block">
-                    {if tier_list.use_last_access,
-                      do:
-                        tier_list.use_last_access
-                        |> DateTime.from_naive!("Etc/UTC")
-                        |> Calendar.strftime("%m/%d"),
-                      else: "Never"}
+                    {format_date_short(tier_list.use_last_access, @locale)}
                   </div>
                 </td>
 
@@ -221,12 +230,7 @@
                     <span class="text-blue-400 font-medium">{tier_list.view_access_count}</span>
                   </div>
                   <div class="text-xs text-gray-500 hidden sm:block">
-                    {if tier_list.view_last_access,
-                      do:
-                        tier_list.view_last_access
-                        |> DateTime.from_naive!("Etc/UTC")
-                        |> Calendar.strftime("%m/%d"),
-                      else: "Never"}
+                    {format_date_short(tier_list.view_last_access, @locale)}
                   </div>
                 </td>
 

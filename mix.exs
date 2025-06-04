@@ -58,7 +58,9 @@ defmodule Ranksy.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
-      {:image, "~> 0.59"}
+      {:image, "~> 0.59"},
+      {:ex_cldr, "~> 2.40"},
+      {:ex_cldr_dates_times, "~> 2.19"}
     ]
   end
 
