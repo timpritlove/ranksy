@@ -34,6 +34,7 @@
               ]}
               data-draggable={if @mode != :view, do: "true", else: "false"}
               data-object-id={object.id}
+              data-position={object.position}
               draggable={@mode != :view}
             >
               <img
@@ -84,6 +85,7 @@
             ]}
             data-draggable={if @mode != :view, do: "true", else: "false"}
             data-object-id={object.id}
+            data-position={object.position}
             draggable={@mode != :view}
           >
             <img
