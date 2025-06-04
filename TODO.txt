@@ -1,7 +1,8 @@
 Next steps
 
 [*] make a new tier D
-[ ] improve behaviour on touch based devices
-[ ] make the tier list title be editable in edit mode
+[*] improve behaviour on touch based devices
+[ ] admin view that shows all tier lists in the database with name, access times and counts
+[*] make the tier list title be editable in edit mode
 [ ] Make tier names configurable
 [ ] Let the user create tier lists with any number of tiers

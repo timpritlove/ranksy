@@ -1,7 +1,31 @@
 <div class="min-h-screen bg-gray-900 text-white">
   <!-- Title - Big and Centered -->
   <div class="text-center py-8">
-    <h1 class="text-6xl font-bold text-white mb-4">{@tier_list.title}</h1>
+    <%= if @mode == :edit and @editing_title do %>
+      <form phx-submit="update_title" phx-click-away="cancel_edit_title" class="inline-block">
+        <input
+          type="text"
+          name="title"
+          value={@tier_list.title}
+          class="text-6xl font-bold text-black mb-4 bg-gray-200 border-2 border-gray-400 text-center focus:outline-none focus:border-blue-500 focus:bg-white min-w-[300px] rounded-lg px-4 py-2"
+          autofocus
+          phx-key="Escape"
+          phx-keyup="cancel_edit_title"
+          required
+        />
+      </form>
+    <% else %>
+      <h1
+        class={[
+          "text-6xl font-bold text-white mb-4",
+          if(@mode == :edit, do: "cursor-pointer hover:text-gray-300 transition-colors", else: "")
+        ]}
+        phx-click={if @mode == :edit, do: "edit_title", else: nil}
+        title={if @mode == :edit, do: "Click to edit title", else: nil}
+      >
+        {@tier_list.title}
+      </h1>
+    <% end %>
   </div>
   
 <!-- Drag and Drop Arena -->
@@ -117,6 +141,114 @@
     </div>
   </div>
   
+<!-- Share Links Section -->
+  <div class="px-4 py-8 mt-12">
+    <%= if @mode == :edit do %>
+      <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+        <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
+          <h3 class="text-xl font-semibold text-white">Share Your Tier List</h3>
+        </div>
+
+        <div class="p-6">
+          <div class="space-y-4">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-300">
+                  Edit URL (you can modify):
+                </label>
+                <div class="text-xs text-gray-400 text-right">
+                  <%= case Map.get(@access_stats, "edit") do %>
+                    <% %{last_accessed_at: time, access_count: count} -> %>
+                      <div>Last accessed: {relative_time(time)}</div>
+                      <div>Total accesses: {count}</div>
+                    <% _ -> %>
+                      <div>Never accessed</div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="bg-gray-700 rounded-lg border border-gray-600">
+                <a
+                  href={~p"/edit/#{@tier_list.edit_token}"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+                >
+                  <code class="text-green-400 text-sm break-all">
+                    {url(~p"/edit/#{@tier_list.edit_token}")}
+                  </code>
+                </a>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-300">
+                  Use URL (can move objects, no editing):
+                </label>
+                <div class="text-xs text-gray-400 text-right">
+                  <%= case Map.get(@access_stats, "use") do %>
+                    <% %{last_accessed_at: time, access_count: count} -> %>
+                      <div>Last accessed: {relative_time(time)}</div>
+                      <div>Total accesses: {count}</div>
+                    <% _ -> %>
+                      <div>Never accessed</div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="bg-gray-700 rounded-lg border border-gray-600">
+                <a
+                  href={~p"/use/#{@tier_list.use_token}"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+                >
+                  <code class="text-yellow-400 text-sm break-all">
+                    {url(~p"/use/#{@tier_list.use_token}")}
+                  </code>
+                </a>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-300">
+                  View-only URL (read-only with live updates):
+                </label>
+                <div class="text-xs text-gray-400 text-right">
+                  <%= case Map.get(@access_stats, "view") do %>
+                    <% %{last_accessed_at: time, access_count: count} -> %>
+                      <div>Last accessed: {relative_time(time)}</div>
+                      <div>Total accesses: {count}</div>
+                    <% _ -> %>
+                      <div>Never accessed</div>
+                  <% end %>
+                </div>
+              </div>
+              <div class="bg-gray-700 rounded-lg border border-gray-600">
+                <a
+                  href={~p"/view/#{@tier_list.view_token}"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+                >
+                  <code class="text-blue-400 text-sm break-all">
+                    {url(~p"/view/#{@tier_list.view_token}")}
+                  </code>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="text-center">
+        <%= if @mode == :view do %>
+          <p class="text-gray-400 text-lg">View-only mode - Live updates enabled</p>
+        <% else %>
+          <p class="text-gray-400 text-lg">Use mode - You can move objects but not edit them</p>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+  
 <!-- File Upload Section -->
   <%= if @mode == :edit do %>
     <div class="px-4 mt-8">
@@ -192,88 +324,6 @@
       </div>
     </div>
   <% end %>
-  
-<!-- URLs at the Bottom -->
-  <div class="px-4 py-8 mt-12">
-    <%= if @mode == :edit do %>
-      <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
-        <h3 class="text-lg font-semibold text-white mb-4">Share Your Tier List</h3>
-        <div class="space-y-4">
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">
-                Edit URL (you can modify):
-              </label>
-              <div class="text-xs text-gray-400 text-right">
-                <%= case Map.get(@access_stats, "edit") do %>
-                  <% %{last_accessed_at: time, access_count: count} -> %>
-                    <div>Last accessed: {relative_time(time)}</div>
-                    <div>Total accesses: {count}</div>
-                  <% _ -> %>
-                    <div>Never accessed</div>
-                <% end %>
-              </div>
-            </div>
-            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
-              <code class="text-green-400 text-sm break-all">
-                {url(~p"/edit/#{@tier_list.edit_token}")}
-              </code>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">
-                Use URL (can move objects, no editing):
-              </label>
-              <div class="text-xs text-gray-400 text-right">
-                <%= case Map.get(@access_stats, "use") do %>
-                  <% %{last_accessed_at: time, access_count: count} -> %>
-                    <div>Last accessed: {relative_time(time)}</div>
-                    <div>Total accesses: {count}</div>
-                  <% _ -> %>
-                    <div>Never accessed</div>
-                <% end %>
-              </div>
-            </div>
-            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
-              <code class="text-yellow-400 text-sm break-all">
-                {url(~p"/use/#{@tier_list.use_token}")}
-              </code>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">
-                View-only URL (read-only with live updates):
-              </label>
-              <div class="text-xs text-gray-400 text-right">
-                <%= case Map.get(@access_stats, "view") do %>
-                  <% %{last_accessed_at: time, access_count: count} -> %>
-                    <div>Last accessed: {relative_time(time)}</div>
-                    <div>Total accesses: {count}</div>
-                  <% _ -> %>
-                    <div>Never accessed</div>
-                <% end %>
-              </div>
-            </div>
-            <div class="bg-gray-700 rounded-lg p-3 border border-gray-600">
-              <code class="text-blue-400 text-sm break-all">
-                {url(~p"/view/#{@tier_list.view_token}")}
-              </code>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% else %>
-      <div class="text-center">
-        <%= if @mode == :view do %>
-          <p class="text-gray-400 text-lg">View-only mode - Live updates enabled</p>
-        <% else %>
-          <p class="text-gray-400 text-lg">Use mode - You can move objects but not edit them</p>
-        <% end %>
-      </div>
-    <% end %>
-  </div>
   
 <!-- Edit Object Modal -->
   <%= if @editing_object do %>

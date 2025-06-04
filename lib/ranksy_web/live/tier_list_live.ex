@@ -38,6 +38,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:mode, :edit)
           |> assign(:max_upload_entries, max_entries)
           |> assign(:editing_object, nil)
+          |> assign(:editing_title, false)
           |> assign(:access_stats, access_stats)
           |> allow_upload(:images,
             accept: ~w(.jpg .jpeg .png .gif .webp),
@@ -81,6 +82,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:objects, TierLists.list_objects(tier_list.id))
           |> assign(:mode, :view)
           |> assign(:editing_object, nil)
+          |> assign(:editing_title, false)
           |> assign(:access_stats, %{})
 
         {:ok, socket}
@@ -112,6 +114,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:objects, TierLists.list_objects(tier_list.id))
           |> assign(:mode, :use)
           |> assign(:editing_object, nil)
+          |> assign(:editing_title, false)
           |> assign(:access_stats, %{})
 
         {:ok, socket}
@@ -256,7 +259,49 @@ defmodule RanksyWeb.TierListLive do
     end
   end
 
+  def handle_event("edit_title", _params, socket) when socket.assigns.mode != :edit do
+    {:noreply, socket}
+  end
+
+  def handle_event("edit_title", _params, socket) do
+    {:noreply, assign(socket, :editing_title, true)}
+  end
+
+  def handle_event("cancel_edit_title", _params, socket) do
+    {:noreply, assign(socket, :editing_title, false)}
+  end
+
+  def handle_event("update_title", %{"title" => _title}, socket)
+      when socket.assigns.mode != :edit do
+    {:noreply, socket}
+  end
+
+  def handle_event("update_title", %{"title" => title}, socket) do
+    trimmed_title = String.trim(title)
+
+    case TierLists.update_tier_list(socket.assigns.tier_list, %{title: trimmed_title}) do
+      {:ok, updated_tier_list} ->
+        broadcast_update(socket.assigns.tier_list.id, :title_updated, %{title: trimmed_title})
+
+        socket =
+          socket
+          |> assign(:tier_list, updated_tier_list)
+          |> assign(:editing_title, false)
+
+        {:noreply, socket}
+
+      {:error, _changeset} ->
+        # Keep the editing state on error
+        {:noreply, socket}
+    end
+  end
+
   @impl true
+  def handle_info({:tier_list_updated, :title_updated, %{title: title}}, socket) do
+    updated_tier_list = %{socket.assigns.tier_list | title: title}
+    {:noreply, assign(socket, :tier_list, updated_tier_list)}
+  end
+
   def handle_info({:tier_list_updated, _event, _data}, socket) do
     socket =
       socket
