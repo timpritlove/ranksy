@@ -312,7 +312,7 @@
                   <button
                     phx-click="delete_tier_list"
                     phx-value-id={tier_list.id}
-                    data-confirm="⚠️ DANGER: This will permanently delete the tier list '#{tier_list.title}' and ALL #{tier_list.object_count} objects. This action cannot be undone. Are you absolutely sure?"
+                    data-confirm={"⚠️ DANGER: This will permanently delete the tier list '#{tier_list.title}' and ALL #{tier_list.object_count} objects. This action cannot be undone. Are you absolutely sure?"}
                     class="inline-flex items-center px-2 py-1 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors border border-red-400/30"
                     title="Delete tier list and all objects"
                   >
