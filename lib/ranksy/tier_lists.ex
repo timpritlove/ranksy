@@ -96,7 +96,8 @@ defmodule Ranksy.TierLists do
       %{name: "A", color: "#ffbf7f", position: 1},
       %{name: "B", color: "#ffff7f", position: 2},
       %{name: "C", color: "#bfff7f", position: 3},
-      %{name: "F", color: "#7fbfff", position: 4}
+      %{name: "D", color: "#7fffbf", position: 4},
+      %{name: "F", color: "#7fbfff", position: 5}
     ]
 
     Enum.each(default_tiers, fn tier_attrs ->
