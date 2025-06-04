@@ -14,6 +14,8 @@ defmodule Ranksy.Application do
       {Phoenix.PubSub, name: Ranksy.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Ranksy.Finch},
+      # Start the access tracker for debounced tier list access logging
+      Ranksy.AccessTracker,
       # Start a worker by calling: Ranksy.Worker.start_link(arg)
       # {Ranksy.Worker, arg},
       # Start to serve requests, typically the last entry
@@ -31,6 +33,13 @@ defmodule Ranksy.Application do
   @impl true
   def config_change(changed, _new, removed) do
     RanksyWeb.Endpoint.config_change(changed, removed)
+    :ok
+  end
+
+  @impl true
+  def stop(_state) do
+    # Flush any pending access records before shutdown
+    Ranksy.AccessTracker.flush_all()
     :ok
   end
 end

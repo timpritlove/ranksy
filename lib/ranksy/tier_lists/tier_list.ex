@@ -11,6 +11,7 @@ defmodule Ranksy.TierLists.TierList do
 
     has_many :tiers, Ranksy.TierLists.Tier, on_delete: :delete_all
     has_many :objects, Ranksy.TierLists.Object, on_delete: :delete_all
+    has_many :accesses, Ranksy.TierLists.TierListAccess, on_delete: :delete_all
 
     timestamps()
   end

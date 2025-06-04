@@ -7,7 +7,7 @@ defmodule RanksyWeb.TierListLive do
 
   @impl true
   def mount(%{"edit_token" => edit_token}, _session, socket) do
-    case TierLists.get_tier_list_by_edit_token(edit_token) do
+    case TierLists.get_tier_list_by_edit_token_with_tracking(edit_token) do
       nil ->
         {:ok, push_navigate(socket, to: ~p"/")}
 
@@ -19,6 +19,9 @@ defmodule RanksyWeb.TierListLive do
         max_entries = UploadConfig.max_entries()
         max_file_size = UploadConfig.max_file_size()
 
+        # Get access times for display in edit mode
+        access_times = TierLists.get_all_accesses(tier_list.id)
+
         socket =
           socket
           |> assign(:tier_list, tier_list)
@@ -27,6 +30,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:mode, :edit)
           |> assign(:max_upload_entries, max_entries)
           |> assign(:editing_object, nil)
+          |> assign(:access_times, access_times)
           |> allow_upload(:images,
             accept: ~w(.jpg .jpeg .png .gif .webp),
             max_entries: max_entries,
@@ -35,12 +39,17 @@ defmodule RanksyWeb.TierListLive do
             progress: &handle_progress/3
           )
 
+        # Schedule periodic access time updates for edit mode
+        if connected?(socket) do
+          schedule_access_time_update()
+        end
+
         {:ok, socket}
     end
   end
 
   def mount(%{"view_token" => view_token}, _session, socket) do
-    case TierLists.get_tier_list_by_view_token(view_token) do
+    case TierLists.get_tier_list_by_view_token_with_tracking(view_token) do
       nil ->
         {:ok, push_navigate(socket, to: ~p"/")}
 
@@ -62,7 +71,7 @@ defmodule RanksyWeb.TierListLive do
   end
 
   def mount(%{"use_token" => use_token}, _session, socket) do
-    case TierLists.get_tier_list_by_use_token(use_token) do
+    case TierLists.get_tier_list_by_use_token_with_tracking(use_token) do
       nil ->
         {:ok, push_navigate(socket, to: ~p"/")}
 
@@ -226,6 +235,32 @@ defmodule RanksyWeb.TierListLive do
     {:noreply, socket}
   end
 
+  def handle_info(:update_access_times, socket) do
+    # Only update access times in edit mode
+    if socket.assigns.mode == :edit do
+      access_times = TierLists.get_all_accesses(socket.assigns.tier_list.id)
+
+      # Schedule the next update
+      schedule_access_time_update()
+
+      {:noreply, assign(socket, :access_times, access_times)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:access_time_updated, token_type, last_accessed_at}, socket) do
+    # Only update access times in edit mode
+    if socket.assigns.mode == :edit do
+      # Update the specific access time in the current access_times map
+      updated_access_times = Map.put(socket.assigns.access_times, token_type, last_accessed_at)
+
+      {:noreply, assign(socket, :access_times, updated_access_times)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   defp handle_progress(:images, entry, socket) do
     IO.puts("Upload progress for #{entry.client_name}: #{entry.progress}%")
 
@@ -314,4 +349,46 @@ defmodule RanksyWeb.TierListLive do
   defp error_to_string(:too_many_files), do: "Too many files"
   defp error_to_string(:not_accepted), do: "File type not accepted"
   defp error_to_string(error), do: "Upload error: #{inspect(error)}"
+
+  @doc """
+  Formats a DateTime as a relative time string (e.g., "2 minutes ago", "3 hours ago").
+  """
+  def relative_time(nil), do: "Never"
+
+  def relative_time(datetime) do
+    now = DateTime.utc_now()
+    diff_seconds = DateTime.diff(now, datetime)
+
+    cond do
+      diff_seconds < 60 ->
+        "Just now"
+
+      diff_seconds < 3600 ->
+        minutes = div(diff_seconds, 60)
+        "#{minutes} #{pluralize("minute", minutes)} ago"
+
+      diff_seconds < 86400 ->
+        hours = div(diff_seconds, 3600)
+        "#{hours} #{pluralize("hour", hours)} ago"
+
+      diff_seconds < 2_592_000 ->
+        days = div(diff_seconds, 86400)
+        "#{days} #{pluralize("day", days)} ago"
+
+      true ->
+        months = div(diff_seconds, 2_592_000)
+        "#{months} #{pluralize("month", months)} ago"
+    end
+  end
+
+  defp pluralize(word, 1), do: word
+  defp pluralize(word, _), do: word <> "s"
+
+  defp schedule_access_time_update do
+    update_interval =
+      Application.get_env(:ranksy, :access_tracking, [])
+      |> Keyword.get(:update_interval, 30_000)
+
+    Process.send_after(self(), :update_access_times, update_interval)
+  end
 end

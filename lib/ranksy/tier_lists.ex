@@ -6,7 +6,7 @@ defmodule Ranksy.TierLists do
   import Ecto.Query, warn: false
   alias Ranksy.Repo
 
-  alias Ranksy.TierLists.{TierList, Tier, Object}
+  alias Ranksy.TierLists.{TierList, Tier, Object, TierListAccess}
 
   # Constant for the holding zone identifier
   @holding_zone_id "holding_zone"
@@ -296,5 +296,111 @@ defmodule Ranksy.TierLists do
 
     # Update the object with new tier and position
     update_object(object, %{tier_id: new_tier_id, position: new_position})
+  end
+
+  @doc """
+  Records access to a tier list by token type (debounced via AccessTracker).
+  """
+  def record_access(tier_list, token_type, token_value) do
+    Ranksy.AccessTracker.track_access(tier_list.id, token_type, token_value)
+  end
+
+  @doc """
+  Records access to a tier list directly to the database.
+  Used internally by AccessTracker for the actual DB write.
+  """
+  def record_access_direct(tier_list_id, token_type, token_value, last_accessed_at) do
+    result =
+      %TierListAccess{}
+      |> TierListAccess.changeset(%{
+        tier_list_id: tier_list_id,
+        token_type: token_type,
+        token_value: token_value,
+        last_accessed_at: last_accessed_at
+      })
+      |> Repo.insert(
+        on_conflict: [set: [last_accessed_at: last_accessed_at, updated_at: DateTime.utc_now()]],
+        conflict_target: [:tier_list_id, :token_type]
+      )
+
+    # Broadcast access time update via PubSub
+    case result do
+      {:ok, _} ->
+        Phoenix.PubSub.broadcast(
+          Ranksy.PubSub,
+          "tier_list:#{tier_list_id}",
+          {:access_time_updated, token_type, last_accessed_at}
+        )
+
+      _ ->
+        :ok
+    end
+
+    result
+  end
+
+  @doc """
+  Gets the last access time for a tier list by token type.
+  """
+  def get_last_access(tier_list_id, token_type) do
+    from(a in TierListAccess,
+      where: a.tier_list_id == ^tier_list_id and a.token_type == ^token_type,
+      select: a.last_accessed_at
+    )
+    |> Repo.one()
+  end
+
+  @doc """
+  Gets all access times for a tier list.
+  """
+  def get_all_accesses(tier_list_id) do
+    from(a in TierListAccess,
+      where: a.tier_list_id == ^tier_list_id,
+      select: %{token_type: a.token_type, last_accessed_at: a.last_accessed_at}
+    )
+    |> Repo.all()
+    |> Enum.into(%{}, fn %{token_type: type, last_accessed_at: time} -> {type, time} end)
+  end
+
+  @doc """
+  Gets a tier list by edit token and records the access.
+  """
+  def get_tier_list_by_edit_token_with_tracking(edit_token) do
+    case get_tier_list_by_edit_token(edit_token) do
+      nil ->
+        nil
+
+      tier_list ->
+        record_access(tier_list, "edit", edit_token)
+        tier_list
+    end
+  end
+
+  @doc """
+  Gets a tier list by view token and records the access.
+  """
+  def get_tier_list_by_view_token_with_tracking(view_token) do
+    case get_tier_list_by_view_token(view_token) do
+      nil ->
+        nil
+
+      tier_list ->
+        record_access(tier_list, "view", view_token)
+        tier_list
+    end
+  end
+
+  @doc """
+  Gets a tier list by use token and records the access.
+  """
+  def get_tier_list_by_use_token_with_tracking(use_token) do
+    case get_tier_list_by_use_token(use_token) do
+      nil ->
+        nil
+
+      tier_list ->
+        record_access(tier_list, "use", use_token)
+        tier_list
+    end
   end
 end

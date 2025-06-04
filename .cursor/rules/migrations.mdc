@@ -1,6 +1,0 @@
----
-description: 
-globs: *exs
-alwaysApply: false
----
-When creating new migration files in /priv/repo/migrations, always make sure you use the current date and time by looking it up using the "date" command first.

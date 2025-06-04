@@ -71,6 +71,15 @@ config :ranksy, :uploads,
   max_entries: 50,
   max_file_size: 5_000_000
 
+# Access tracking configuration
+# enabled: Whether to track tier list access times
+# flush_delay: How long to wait (in ms) after last access before writing to DB
+# update_interval: How often to refresh access times in edit view (in ms)
+config :ranksy, :access_tracking,
+  enabled: true,
+  flush_delay: 5_000,
+  update_interval: 30_000
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
