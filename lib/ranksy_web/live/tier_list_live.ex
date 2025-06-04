@@ -91,20 +91,21 @@ defmodule RanksyWeb.TierListLive do
         %{"object_id" => object_id, "tier_id" => tier_id, "position" => position},
         socket
       ) do
-    tier_id = if tier_id == "", do: nil, else: tier_id
+    dbg("Moving object: #{object_id} to tier: #{inspect(tier_id)} at position: #{position}")
 
     case TierLists.move_object_to_tier(object_id, tier_id, position) do
       {:ok, _object} ->
         broadcast_update(socket.assigns.tier_list.id, :object_moved, %{
           object_id: object_id,
-          tier_id: tier_id
+          tier_id: tier_id,
+          position: position
         })
 
         {:noreply, reload_objects(socket)}
 
       {:error, reason} ->
         dbg(
-          "Failed to move object: #{inspect(reason)}, object_id: #{inspect(object_id)}, tier_id: #{inspect(tier_id)}"
+          "Failed to move object: #{inspect(reason)}, object_id: #{inspect(object_id)}, tier_id: #{inspect(tier_id)}, position: #{position}"
         )
 
         {:noreply, socket}
@@ -259,11 +260,13 @@ defmodule RanksyWeb.TierListLive do
   end
 
   defp objects_for_tier(objects, tier_id) do
-    Enum.filter(objects, &(&1.tier_id == tier_id))
+    # Convert tier_id to string since object.tier_id is now a string
+    tier_id_string = to_string(tier_id)
+    Enum.filter(objects, &(&1.tier_id == tier_id_string))
   end
 
   defp unassigned_objects(objects) do
-    Enum.filter(objects, &is_nil(&1.tier_id))
+    Enum.filter(objects, &(&1.tier_id == TierLists.holding_zone_id()))
   end
 
   defp error_to_string(:too_large), do: "File too large"

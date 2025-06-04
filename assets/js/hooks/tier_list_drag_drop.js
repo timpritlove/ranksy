@@ -68,6 +68,9 @@ const TierListDragDrop = {
         e.dataTransfer.setData('text/plain', objectId);
         e.target.classList.add('opacity-50');
         e.dataTransfer.effectAllowed = 'move';
+
+        // Store the dragged element for position calculation
+        this.draggedElement = draggableElement;
     },
 
     handleDragEnd(e) {
@@ -76,6 +79,9 @@ const TierListDragDrop = {
         this.el.querySelectorAll('[data-drop-zone]').forEach(zone => {
             zone.classList.remove('bg-blue-50', 'border-blue-300');
         });
+
+        // Clear the dragged element reference
+        this.draggedElement = null;
     },
 
     handleDragOver(e) {
@@ -100,12 +106,11 @@ const TierListDragDrop = {
         e.preventDefault();
         const objectId = e.dataTransfer.getData('text/plain');
         const targetTierId = e.currentTarget.dataset.tierId;
-        const position = 0;
 
         console.log('Drop event:', {
             objectId: objectId,
             targetTierId: targetTierId,
-            position: position
+            dropTarget: e.currentTarget
         });
 
         // Remove highlight
@@ -117,12 +122,57 @@ const TierListDragDrop = {
             return;
         }
 
+        // Calculate the position based on where the drop occurred
+        const position = this.calculateDropPosition(e, targetTierId);
+
+        console.log('Calculated position:', position);
+
         // Send event to LiveView
         this.pushEvent('move_object', {
             object_id: objectId,
-            tier_id: targetTierId,
+            tier_id: targetTierId, // targetTierId should always be set now
             position: position
         });
+    },
+
+    calculateDropPosition(dropEvent, targetTierId) {
+        const dropZone = dropEvent.currentTarget;
+        const existingObjects = Array.from(dropZone.querySelectorAll('[data-object-id]'))
+            .filter(obj => obj !== this.draggedElement); // Exclude the dragged element
+
+        if (existingObjects.length === 0) {
+            return 0; // First object in the tier
+        }
+
+        // Get the drop coordinates
+        const dropX = dropEvent.clientX;
+        const dropY = dropEvent.clientY;
+
+        // Find the best insertion point
+        let insertPosition = existingObjects.length; // Default to end
+
+        for (let i = 0; i < existingObjects.length; i++) {
+            const objRect = existingObjects[i].getBoundingClientRect();
+            const objCenterX = objRect.left + objRect.width / 2;
+            const objCenterY = objRect.top + objRect.height / 2;
+
+            // Check if we should insert before this object
+            // For horizontal layout: check if drop is to the left of the object center
+            // For vertical wrapping: also consider Y position
+            if (dropX < objCenterX || (dropY < objCenterY && dropX < objRect.right)) {
+                insertPosition = i;
+                break;
+            }
+        }
+
+        console.log('Position calculation:', {
+            dropX,
+            dropY,
+            existingObjectsCount: existingObjects.length,
+            insertPosition
+        });
+
+        return insertPosition;
     }
 };
 

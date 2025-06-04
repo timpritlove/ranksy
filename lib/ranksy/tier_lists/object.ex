@@ -8,9 +8,10 @@ defmodule Ranksy.TierLists.Object do
     field :content_type, :string
     field :file_size, :integer
     field :position, :integer, default: 0
+    field :tier_id, :string
 
     belongs_to :tier_list, Ranksy.TierLists.TierList
-    belongs_to :tier, Ranksy.TierLists.Tier
+    # Note: tier relationship is now handled manually since tier_id is a string
 
     timestamps()
   end
@@ -34,6 +35,7 @@ defmodule Ranksy.TierLists.Object do
     |> validate_number(:file_size, greater_than: 0, less_than: 200_000)
     |> validate_number(:position, greater_than_or_equal_to: 0)
     |> foreign_key_constraint(:tier_list_id)
-    |> foreign_key_constraint(:tier_id)
+
+    # Note: No foreign key constraint on tier_id since it's now a string that can be "holding_zone"
   end
 end

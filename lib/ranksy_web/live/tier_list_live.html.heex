@@ -65,7 +65,7 @@
       <div
         class="tier-objects w-full min-h-[160px] p-4 flex flex-wrap gap-3 items-center bg-gray-50"
         data-drop-zone="true"
-        data-tier-id=""
+        data-tier-id={Ranksy.TierLists.holding_zone_id()}
       >
         <%= for object <- unassigned_objects(@objects) do %>
           <div
