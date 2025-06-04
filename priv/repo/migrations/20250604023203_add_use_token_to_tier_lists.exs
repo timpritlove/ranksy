@@ -8,10 +8,10 @@ defmodule Ranksy.Repo.Migrations.AddUseTokenToTierLists do
 
     create unique_index(:tier_lists, [:use_token])
 
-    # Generate use_tokens for existing tier lists
+    # Generate use_tokens for existing tier lists (without padding for URL safety)
     execute """
             UPDATE tier_lists
-            SET use_token = encode(decode(md5(random()::text || clock_timestamp()::text), 'hex'), 'base64')
+            SET use_token = rtrim(encode(decode(md5(random()::text || clock_timestamp()::text), 'hex'), 'base64'), '=')
             WHERE use_token IS NULL;
             """,
             ""
