@@ -31,10 +31,15 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :ranksy, Ranksy.Repo,
-    # ssl: true,
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    socket_options: maybe_ipv6
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "3"),
+    socket_options: maybe_ipv6,
+    timeout: 15_000,
+    connect_timeout: 10_000,
+    handshake_timeout: 20_000,
+    pool_timeout: 5_000,
+    queue_target: 200,
+    queue_interval: 2_000
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
