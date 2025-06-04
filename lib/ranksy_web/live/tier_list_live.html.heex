@@ -27,7 +27,10 @@
             <div
               class={[
                 "tier-object group relative bg-white/20 backdrop-blur-sm rounded-lg p-2 transition-all select-none",
-                if(@mode != :view, do: "cursor-move hover:bg-white/30", else: "cursor-default")
+                if(@mode != :view,
+                  do: "cursor-move hover:bg-white/30 touch-target",
+                  else: "cursor-default"
+                )
               ]}
               data-draggable={if @mode != :view, do: "true", else: "false"}
               data-object-id={object.id}
@@ -74,7 +77,10 @@
           <div
             class={[
               "tier-object group relative bg-white rounded-lg p-2 transition-shadow select-none border border-gray-200",
-              if(@mode != :view, do: "cursor-move hover:shadow-md", else: "cursor-default")
+              if(@mode != :view,
+                do: "cursor-move hover:shadow-md touch-target",
+                else: "cursor-default"
+              )
             ]}
             data-draggable={if @mode != :view, do: "true", else: "false"}
             data-object-id={object.id}

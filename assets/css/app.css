@@ -20,3 +20,127 @@
         transform: scaleY(1.05);
     }
 }
+
+/* Touch-specific styles for better mobile experience */
+
+/* Touch pressed state - immediate feedback when touching an object */
+.touch-pressed {
+    transform: scale(0.95);
+    opacity: 0.8;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Touch dragging state - visual feedback while dragging */
+.touch-dragging {
+    opacity: 0.6;
+    transform: scale(0.9);
+    transition: none;
+    z-index: 1000;
+    position: relative;
+}
+
+/* Touch drag preview styles */
+.touch-drag-preview {
+    animation: drag-float 0.3s ease-out;
+}
+
+@keyframes drag-float {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1.1) rotate(5deg);
+        opacity: 0.8;
+    }
+}
+
+/* Drop zone highlighting - now handled dynamically in JavaScript */
+.drop-zone-highlighted {
+    transition: all 0.2s ease;
+}
+
+/* Touch target improvements */
+.touch-target {
+    /* Ensure minimum touch target size (44px is Apple's recommendation) */
+    min-width: 44px;
+    min-height: 44px;
+    /* Prevent browser's default long press behaviors */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Enhanced touch targets for mobile */
+@media (max-width: 768px) {
+    .tier-object {
+        /* Larger touch targets on mobile */
+        min-width: 88px;
+        min-height: 88px;
+        padding: 8px;
+        /* Prevent browser's default long press behaviors on mobile */
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    .tier-object img {
+        /* Slightly larger images on mobile for better visibility */
+        width: 72px;
+        height: 72px;
+    }
+
+    /* Increase spacing between objects for easier touch targeting */
+    .tier-objects {
+        gap: 16px;
+    }
+
+    /* Make tier headers more prominent on mobile */
+    .tier-header {
+        min-width: 120px;
+    }
+
+    .tier-header span {
+        font-size: 4rem;
+        /* Smaller than desktop but still prominent */
+    }
+}
+
+/* Touch-friendly scrolling and interactions */
+@media (hover: none) and (pointer: coarse) {
+
+    /* This targets touch devices specifically */
+    .tier-object {
+        /* Remove hover effects on touch devices */
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+        /* Allow pan-y to enable vertical scrolling */
+        touch-action: pan-y;
+    }
+
+    .tier-object:active {
+        /* Active state for touch feedback */
+        transform: scale(0.95);
+    }
+
+    /* Allow vertical scrolling in drop zones */
+    .tier-objects {
+        touch-action: pan-y;
+    }
+}
+
+/* Accessibility improvements for touch */
+@media (prefers-reduced-motion: reduce) {
+
+    .touch-pressed,
+    .touch-dragging,
+    .touch-drag-preview,
+    .drop-indicator {
+        transition: none;
+        animation: none;
+    }
+}

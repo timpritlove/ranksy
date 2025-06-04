@@ -132,7 +132,7 @@ defmodule RanksyWeb.TierListLive do
   end
 
   def handle_event("save_images", _params, socket) do
-    IO.puts("=== save_images event triggered (manual submit) ===")
+    dbg("save_images event triggered (manual submit)")
     # With auto_upload: true, files are processed automatically via handle_progress
     # This handler is only for manual form submission if needed
     {:noreply, socket}
@@ -152,21 +152,26 @@ defmodule RanksyWeb.TierListLive do
         %{"object_id" => object_id, "tier_id" => tier_id, "position" => position},
         socket
       ) do
-    dbg("Moving object: #{object_id} to tier: #{inspect(tier_id)} at position: #{position}")
+    # Convert position to integer if it's a string
+    position_int = if is_binary(position), do: String.to_integer(position), else: position
 
-    case TierLists.move_object_to_tier(object_id, tier_id, position) do
+    dbg(
+      "Moving object: #{object_id} to tier: #{inspect(tier_id)} at position: #{position_int} (original: #{inspect(position)})"
+    )
+
+    case TierLists.move_object_to_tier(object_id, tier_id, position_int) do
       {:ok, _object} ->
         broadcast_update(socket.assigns.tier_list.id, :object_moved, %{
           object_id: object_id,
           tier_id: tier_id,
-          position: position
+          position: position_int
         })
 
         {:noreply, reload_objects(socket)}
 
       {:error, reason} ->
         dbg(
-          "Failed to move object: #{inspect(reason)}, object_id: #{inspect(object_id)}, tier_id: #{inspect(tier_id)}, position: #{position}"
+          "Failed to move object: #{inspect(reason)}, object_id: #{inspect(object_id)}, tier_id: #{inspect(tier_id)}, position: #{position_int}"
         )
 
         {:noreply, socket}
@@ -309,22 +314,22 @@ defmodule RanksyWeb.TierListLive do
   end
 
   defp handle_progress(:images, entry, socket) do
-    IO.puts("Upload progress for #{entry.client_name}: #{entry.progress}%")
+    dbg("Upload progress for #{entry.client_name}: #{entry.progress}%")
 
     # Handle cancelled or failed uploads
     cond do
       entry.cancelled? ->
-        IO.puts("Upload cancelled for #{entry.client_name}")
+        dbg("Upload cancelled for #{entry.client_name}")
         {:noreply, socket}
 
       entry.done? ->
-        IO.puts("Upload completed for #{entry.client_name}, processing...")
+        dbg("Upload completed for #{entry.client_name}, processing...")
 
         result =
           consume_uploaded_entry(socket, entry, fn %{path: path} ->
             case ImageProcessor.process_upload(path, entry.client_name) do
               {:ok, processed_image} ->
-                IO.puts("Image processed successfully")
+                dbg("Image processed successfully")
 
                 case TierLists.create_object(socket.assigns.tier_list.id, %{
                        name: Path.rootname(entry.client_name),
@@ -333,17 +338,17 @@ defmodule RanksyWeb.TierListLive do
                        file_size: processed_image.file_size
                      }) do
                   {:ok, object} ->
-                    IO.puts("Object created successfully: #{object.id}")
+                    dbg("Object created successfully: #{object.id}")
                     broadcast_update(socket.assigns.tier_list.id, :object_created, object)
                     {:ok, object}
 
                   {:error, reason} ->
-                    IO.puts("Failed to create object: #{inspect(reason)}")
+                    dbg("Failed to create object: #{inspect(reason)}")
                     {:ok, :error}
                 end
 
               {:error, reason} ->
-                IO.puts("Failed to process image: #{inspect(reason)}")
+                dbg("Failed to process image: #{inspect(reason)}")
                 {:ok, :error}
             end
           end)
@@ -361,7 +366,7 @@ defmodule RanksyWeb.TierListLive do
             {:noreply, socket}
 
           _ ->
-            IO.puts("Upload consumption failed: #{inspect(result)}")
+            dbg("Upload consumption failed: #{inspect(result)}")
             {:noreply, socket}
         end
 
