@@ -81,6 +81,13 @@ config :ranksy, :access_tracking,
   flush_delay: 5_000,
   update_interval: 30_000
 
+# Admin authentication configuration
+# username: Admin username for basic auth
+# password: Admin password for basic auth
+config :ranksy, :admin_auth,
+  username: "admin",
+  password: "admin123"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

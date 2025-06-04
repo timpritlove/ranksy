@@ -91,3 +91,8 @@ config :ranksy, :access_tracking,
   flush_delay: 500,
   # Update every 5 seconds instead of 30 to keep relative times fresh
   update_interval: 5_000
+
+# Development admin authentication - simple credentials for dev
+config :ranksy, :admin_auth,
+  username: "admin",
+  password: "dev"

@@ -14,6 +14,10 @@ defmodule RanksyWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :admin_auth do
+    plug RanksyWeb.Plugs.AdminAuth
+  end
+
   scope "/", RanksyWeb do
     pipe_through :browser
 
@@ -22,6 +26,13 @@ defmodule RanksyWeb.Router do
     live "/view/:view_token", TierListLive
     live "/use/:use_token", TierListLive
     get "/images/:id", ImageController, :show
+  end
+
+  # Admin section
+  scope "/admin", RanksyWeb do
+    pipe_through [:browser, :admin_auth]
+
+    live "/", AdminLive
   end
 
   # Other scopes may use custom stacks.

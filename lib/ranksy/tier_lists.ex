@@ -445,4 +445,93 @@ defmodule Ranksy.TierLists do
         tier_list
     end
   end
+
+  # Admin functions
+
+  @doc """
+  Lists all tier lists with admin metadata including object count and total size.
+  """
+  def list_tier_lists_with_admin_metadata do
+    query = """
+    SELECT
+      tl.id,
+      tl.title,
+      tl.edit_token,
+      tl.view_token,
+      tl.use_token,
+      tl.inserted_at,
+      tl.updated_at,
+      COALESCE(obj_stats.object_count, 0) as object_count,
+      COALESCE(obj_stats.total_size, 0) as total_size,
+      COALESCE(edit_access.last_accessed_at, NULL) as edit_last_access,
+      COALESCE(edit_access.access_count, 0) as edit_access_count,
+      COALESCE(view_access.last_accessed_at, NULL) as view_last_access,
+      COALESCE(view_access.access_count, 0) as view_access_count,
+      COALESCE(use_access.last_accessed_at, NULL) as use_last_access,
+      COALESCE(use_access.access_count, 0) as use_access_count
+    FROM tier_lists tl
+    LEFT JOIN (
+      SELECT
+        tier_list_id,
+        COUNT(*) as object_count,
+        SUM(file_size) as total_size
+      FROM objects
+      GROUP BY tier_list_id
+    ) obj_stats ON tl.id = obj_stats.tier_list_id
+    LEFT JOIN tier_list_accesses edit_access ON tl.id = edit_access.tier_list_id AND edit_access.token_type = 'edit'
+    LEFT JOIN tier_list_accesses view_access ON tl.id = view_access.tier_list_id AND view_access.token_type = 'view'
+    LEFT JOIN tier_list_accesses use_access ON tl.id = use_access.tier_list_id AND use_access.token_type = 'use'
+    ORDER BY tl.inserted_at DESC
+    """
+
+    result = Ecto.Adapters.SQL.query!(Repo, query, [])
+
+    Enum.map(result.rows, fn row ->
+      [
+        id,
+        title,
+        edit_token,
+        view_token,
+        use_token,
+        inserted_at,
+        updated_at,
+        object_count,
+        total_size,
+        edit_last_access,
+        edit_access_count,
+        view_last_access,
+        view_access_count,
+        use_last_access,
+        use_access_count
+      ] = row
+
+      %{
+        id: id,
+        title: title,
+        edit_token: edit_token,
+        view_token: view_token,
+        use_token: use_token,
+        inserted_at: inserted_at,
+        updated_at: updated_at,
+        object_count: object_count,
+        total_size: total_size,
+        edit_last_access: edit_last_access,
+        edit_access_count: edit_access_count,
+        view_last_access: view_last_access,
+        view_access_count: view_access_count,
+        use_last_access: use_last_access,
+        use_access_count: use_access_count
+      }
+    end)
+  end
+
+  @doc """
+  Deletes a tier list by ID (admin function).
+  """
+  def admin_delete_tier_list(id) do
+    case Repo.get(TierList, id) do
+      nil -> {:error, :not_found}
+      tier_list -> delete_tier_list(tier_list)
+    end
+  end
 end
