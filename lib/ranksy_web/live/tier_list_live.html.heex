@@ -1,94 +1,96 @@
 <div class="min-h-screen bg-gray-900 text-white">
   <!-- Title - Big and Centered -->
   <div class="text-center py-8">
-    <%= if @mode == :edit and @editing_title do %>
-      <form phx-submit="update_title" phx-click-away="cancel_edit_title" class="inline-block">
-        <input
-          type="text"
-          name="title"
-          value={@tier_list.title}
-          class="text-6xl font-bold text-black mb-4 bg-gray-200 border-2 border-gray-400 text-center focus:outline-none focus:border-blue-500 focus:bg-white min-w-[300px] rounded-lg px-4 py-2"
-          autofocus
-          phx-key="Escape"
-          phx-keyup="cancel_edit_title"
-          required
-        />
-      </form>
-    <% else %>
-      <h1
-        class={[
-          "text-6xl font-bold text-white mb-4",
-          if(@mode == :edit, do: "cursor-pointer hover:text-gray-300 transition-colors", else: "")
-        ]}
-        phx-click={if @mode == :edit, do: "edit_title", else: nil}
-        title={if @mode == :edit, do: "Click to edit title", else: nil}
-      >
-        {@tier_list.title}
-      </h1>
-    <% end %>
+    <form
+      :if={@mode == :edit and @editing_title}
+      phx-submit="update_title"
+      phx-click-away="cancel_edit_title"
+      class="inline-block"
+    >
+      <input
+        type="text"
+        name="title"
+        value={@tier_list.title}
+        class="text-6xl font-bold text-black mb-4 bg-gray-200 border-2 border-gray-400 text-center focus:outline-none focus:border-blue-500 focus:bg-white min-w-[300px] rounded-lg px-4 py-2"
+        autofocus
+        phx-key="Escape"
+        phx-keyup="cancel_edit_title"
+        required
+      />
+    </form>
+    <h1
+      :if={not (@mode == :edit and @editing_title)}
+      class={[
+        "text-6xl font-bold text-white mb-4",
+        if(@mode == :edit, do: "cursor-pointer hover:text-gray-300 transition-colors", else: "")
+      ]}
+      phx-click={if @mode == :edit, do: "edit_title", else: nil}
+      title={if @mode == :edit, do: "Click to edit title", else: nil}
+    >
+      {@tier_list.title}
+    </h1>
   </div>
   
 <!-- Drag and Drop Arena -->
   <div id="tier-list" phx-hook="TierListDragDrop" class="px-4 space-y-2">
     <!-- Tiers -->
-    <%= for tier <- @tiers do %>
-      <div
-        class="tier-row flex rounded-lg overflow-hidden shadow-lg"
-        style={"background-color: #{tier.color}"}
-      >
-        <!-- Tier Letter - Huge and on the Left -->
-        <div class="tier-header flex items-center justify-center w-32 min-h-[140px]">
-          <span class="text-8xl font-black text-white drop-shadow-lg">{tier.name}</span>
-        </div>
-        
+    <div
+      :for={tier <- @tiers}
+      class="tier-row flex rounded-lg overflow-hidden shadow-lg"
+      style={"background-color: #{tier.color}"}
+    >
+      <!-- Tier Letter - Huge and on the Left -->
+      <div class="tier-header flex items-center justify-center w-32 min-h-[140px]">
+        <span class="text-8xl font-black text-white drop-shadow-lg">{tier.name}</span>
+      </div>
+      
 <!-- Tier Objects -->
+      <div
+        class="tier-objects flex-1 min-h-[140px] p-4 flex flex-wrap gap-3 items-center"
+        data-drop-zone={if @mode != :view, do: "true", else: "false"}
+        data-tier-id={tier.id}
+      >
         <div
-          class="tier-objects flex-1 min-h-[140px] p-4 flex flex-wrap gap-3 items-center"
-          data-drop-zone={if @mode != :view, do: "true", else: "false"}
-          data-tier-id={tier.id}
+          :for={object <- objects_for_tier(@objects, tier.id)}
+          class={[
+            "tier-object group relative bg-white/20 backdrop-blur-sm rounded-lg p-2 transition-all select-none",
+            if(@mode != :view,
+              do: "cursor-move hover:bg-white/30 touch-target",
+              else: "cursor-default"
+            )
+          ]}
+          data-draggable={if @mode != :view, do: "true", else: "false"}
+          data-object-id={object.id}
+          data-position={object.position}
+          draggable={@mode != :view}
         >
-          <%= for object <- objects_for_tier(@objects, tier.id) do %>
-            <div
-              class={[
-                "tier-object group relative bg-white/20 backdrop-blur-sm rounded-lg p-2 transition-all select-none",
-                if(@mode != :view,
-                  do: "cursor-move hover:bg-white/30 touch-target",
-                  else: "cursor-default"
-                )
-              ]}
-              data-draggable={if @mode != :view, do: "true", else: "false"}
-              data-object-id={object.id}
-              data-position={object.position}
-              draggable={@mode != :view}
-            >
-              <img
-                src={~p"/images/#{object.id}"}
-                alt={object.name}
-                class="object-image w-20 h-20 object-cover rounded"
-                loading="lazy"
-                draggable="false"
-              />
-              <div class="object-name text-xs text-center mt-1 text-white font-medium truncate max-w-[80px] drop-shadow">
-                {object.name}
-              </div>
+          <img
+            src={~p"/images/#{object.id}"}
+            alt={object.name}
+            class="object-image w-20 h-20 object-cover rounded"
+            loading="lazy"
+            draggable="false"
+          />
+          <div class="object-name text-xs text-center mt-1 text-white font-medium truncate max-w-[80px] drop-shadow">
+            {object.name}
+          </div>
 
-              <%= if @mode == :edit do %>
-                <div class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    phx-click="edit_object"
-                    phx-value-object_id={object.id}
-                    class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600"
-                    title="Edit object"
-                  >
-                    ✏️
-                  </button>
-                </div>
-              <% end %>
-            </div>
-          <% end %>
+          <div
+            :if={@mode == :edit}
+            class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <button
+              phx-click="edit_object"
+              phx-value-object_id={object.id}
+              class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600"
+              title="Edit object"
+            >
+              ✏️
+            </button>
+          </div>
         </div>
       </div>
-    <% end %>
+    </div>
     
 <!-- Holding Zone - Light Background -->
     <div class="tier-row rounded-lg overflow-hidden shadow-lg bg-gray-100 mt-8">
@@ -98,295 +100,318 @@
         data-drop-zone={if @mode != :view, do: "true", else: "false"}
         data-tier-id={Ranksy.TierLists.holding_zone_id()}
       >
-        <%= for object <- unassigned_objects(@objects) do %>
-          <div
-            class={[
-              "tier-object group relative bg-white rounded-lg p-2 transition-shadow select-none border border-gray-200",
-              if(@mode != :view,
-                do: "cursor-move hover:shadow-md touch-target",
-                else: "cursor-default"
-              )
-            ]}
-            data-draggable={if @mode != :view, do: "true", else: "false"}
-            data-object-id={object.id}
-            data-position={object.position}
-            draggable={@mode != :view}
-          >
-            <img
-              src={~p"/images/#{object.id}"}
-              alt={object.name}
-              class="object-image w-20 h-20 object-cover rounded"
-              loading="lazy"
-              draggable="false"
-            />
-            <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
-              {object.name}
-            </div>
-
-            <%= if @mode == :edit do %>
-              <div class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  phx-click="edit_object"
-                  phx-value-object_id={object.id}
-                  class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600"
-                  title="Edit object"
-                >
-                  ✏️
-                </button>
-              </div>
-            <% end %>
+        <div
+          :for={object <- unassigned_objects(@objects)}
+          class={[
+            "tier-object group relative bg-white rounded-lg p-2 transition-shadow select-none border border-gray-200",
+            if(@mode != :view,
+              do: "cursor-move hover:shadow-md touch-target",
+              else: "cursor-default"
+            )
+          ]}
+          data-draggable={if @mode != :view, do: "true", else: "false"}
+          data-object-id={object.id}
+          data-position={object.position}
+          draggable={@mode != :view}
+        >
+          <img
+            src={~p"/images/#{object.id}"}
+            alt={object.name}
+            class="object-image w-20 h-20 object-cover rounded"
+            loading="lazy"
+            draggable="false"
+          />
+          <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px]">
+            {object.name}
           </div>
-        <% end %>
+
+          <div
+            :if={@mode == :edit}
+            class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <button
+              phx-click="edit_object"
+              phx-value-object_id={object.id}
+              class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600"
+              title="Edit object"
+            >
+              ✏️
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   
 <!-- Share Links Section -->
   <div class="px-4 py-8 mt-12">
-    <%= if @mode == :edit do %>
-      <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-        <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
-          <h3 class="text-xl font-semibold text-white">Share Your Tier List</h3>
-        </div>
+    <div
+      :if={@mode == :edit}
+      class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden"
+    >
+      <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
+        <h3 class="text-xl font-semibold text-white">Share Your Tier List</h3>
+      </div>
 
-        <div class="p-6">
-          <div class="space-y-4">
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <label class="block text-sm font-medium text-gray-300">
-                  Edit URL (you can modify):
-                </label>
-                <div class="text-xs text-gray-400 text-right">
-                  <%= case Map.get(@access_stats, "edit") do %>
-                    <% %{last_accessed_at: time, access_count: count} -> %>
-                      <div>Last accessed: {relative_time(time)}</div>
-                      <div>Total accesses: {count}</div>
-                    <% _ -> %>
-                      <div>Never accessed</div>
-                  <% end %>
+      <div class="p-6">
+        <div class="space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-300">
+                Edit URL (you can modify):
+              </label>
+              <div class="text-xs text-gray-400 text-right">
+                <div :if={
+                  match?(%{last_accessed_at: _, access_count: _}, Map.get(@access_stats, "edit"))
+                }>
+                  <div>
+                    Last accessed: {relative_time(Map.get(@access_stats, "edit").last_accessed_at)}
+                  </div>
+                  <div>Total accesses: {Map.get(@access_stats, "edit").access_count}</div>
                 </div>
-              </div>
-              <div class="bg-gray-700 rounded-lg border border-gray-600">
-                <a
-                  href={~p"/edit/#{@tier_list.edit_token}"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
-                >
-                  <code class="text-green-400 text-sm break-all">
-                    {url(~p"/edit/#{@tier_list.edit_token}")}
-                  </code>
-                </a>
+                <div :if={
+                  not match?(
+                    %{last_accessed_at: _, access_count: _},
+                    Map.get(@access_stats, "edit")
+                  )
+                }>
+                  Never accessed
+                </div>
               </div>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <label class="block text-sm font-medium text-gray-300">
-                  Use URL (can move objects, no editing):
-                </label>
-                <div class="text-xs text-gray-400 text-right">
-                  <%= case Map.get(@access_stats, "use") do %>
-                    <% %{last_accessed_at: time, access_count: count} -> %>
-                      <div>Last accessed: {relative_time(time)}</div>
-                      <div>Total accesses: {count}</div>
-                    <% _ -> %>
-                      <div>Never accessed</div>
-                  <% end %>
+            <div class="bg-gray-700 rounded-lg border border-gray-600">
+              <a
+                href={~p"/edit/#{@tier_list.edit_token}"}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+              >
+                <code class="text-green-400 text-sm break-all">
+                  {url(~p"/edit/#{@tier_list.edit_token}")}
+                </code>
+              </a>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-300">
+                Use URL (can move objects, no editing):
+              </label>
+              <div class="text-xs text-gray-400 text-right">
+                <div :if={
+                  match?(%{last_accessed_at: _, access_count: _}, Map.get(@access_stats, "use"))
+                }>
+                  <div>
+                    Last accessed: {relative_time(Map.get(@access_stats, "use").last_accessed_at)}
+                  </div>
+                  <div>Total accesses: {Map.get(@access_stats, "use").access_count}</div>
                 </div>
-              </div>
-              <div class="bg-gray-700 rounded-lg border border-gray-600">
-                <a
-                  href={~p"/use/#{@tier_list.use_token}"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
-                >
-                  <code class="text-yellow-400 text-sm break-all">
-                    {url(~p"/use/#{@tier_list.use_token}")}
-                  </code>
-                </a>
+                <div :if={
+                  not match?(
+                    %{last_accessed_at: _, access_count: _},
+                    Map.get(@access_stats, "use")
+                  )
+                }>
+                  Never accessed
+                </div>
               </div>
             </div>
-            <div>
-              <div class="flex items-center justify-between mb-2">
-                <label class="block text-sm font-medium text-gray-300">
-                  View-only URL (read-only with live updates):
-                </label>
-                <div class="text-xs text-gray-400 text-right">
-                  <%= case Map.get(@access_stats, "view") do %>
-                    <% %{last_accessed_at: time, access_count: count} -> %>
-                      <div>Last accessed: {relative_time(time)}</div>
-                      <div>Total accesses: {count}</div>
-                    <% _ -> %>
-                      <div>Never accessed</div>
-                  <% end %>
+            <div class="bg-gray-700 rounded-lg border border-gray-600">
+              <a
+                href={~p"/use/#{@tier_list.use_token}"}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+              >
+                <code class="text-yellow-400 text-sm break-all">
+                  {url(~p"/use/#{@tier_list.use_token}")}
+                </code>
+              </a>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-gray-300">
+                View-only URL (read-only with live updates):
+              </label>
+              <div class="text-xs text-gray-400 text-right">
+                <div :if={
+                  match?(%{last_accessed_at: _, access_count: _}, Map.get(@access_stats, "view"))
+                }>
+                  <div>
+                    Last accessed: {relative_time(Map.get(@access_stats, "view").last_accessed_at)}
+                  </div>
+                  <div>Total accesses: {Map.get(@access_stats, "view").access_count}</div>
+                </div>
+                <div :if={
+                  not match?(
+                    %{last_accessed_at: _, access_count: _},
+                    Map.get(@access_stats, "view")
+                  )
+                }>
+                  Never accessed
                 </div>
               </div>
-              <div class="bg-gray-700 rounded-lg border border-gray-600">
-                <a
-                  href={~p"/view/#{@tier_list.view_token}"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
-                >
-                  <code class="text-blue-400 text-sm break-all">
-                    {url(~p"/view/#{@tier_list.view_token}")}
-                  </code>
-                </a>
-              </div>
+            </div>
+            <div class="bg-gray-700 rounded-lg border border-gray-600">
+              <a
+                href={~p"/view/#{@tier_list.view_token}"}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+              >
+                <code class="text-blue-400 text-sm break-all">
+                  {url(~p"/view/#{@tier_list.view_token}")}
+                </code>
+              </a>
             </div>
           </div>
         </div>
       </div>
-    <% else %>
-      <div class="text-center">
-        <%= if @mode == :view do %>
-          <p class="text-gray-400 text-lg">View-only mode - Live updates enabled</p>
-        <% else %>
-          <p class="text-gray-400 text-lg">Use mode - You can move objects but not edit them</p>
-        <% end %>
-      </div>
-    <% end %>
+    </div>
+    <div :if={@mode != :edit} class="text-center">
+      <p :if={@mode == :view} class="text-gray-400 text-lg">
+        View-only mode - Live updates enabled
+      </p>
+      <p :if={@mode != :view} class="text-gray-400 text-lg">
+        Use mode - You can move objects but not edit them
+      </p>
+    </div>
   </div>
   
 <!-- File Upload Section -->
-  <%= if @mode == :edit do %>
-    <div class="px-4 mt-8">
-      <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-        <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
-          <h2 class="text-xl font-semibold text-white">Add New Objects</h2>
-        </div>
-
-        <div class="p-6">
-          <form id="upload-form" phx-submit="save_images" phx-change="validate">
-            <div
-              id="file-drop-zone"
-              class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors bg-gray-750"
-              phx-hook="FileDropZone"
-              phx-drop-target={@uploads.images.ref}
-              data-max-files={@max_upload_entries}
-            >
-              <div class="space-y-2">
-                <svg
-                  class="mx-auto h-12 w-12 text-gray-400"
-                  stroke="currentColor"
-                  fill="none"
-                  viewBox="0 0 48 48"
-                >
-                  <path
-                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-                <div class="text-gray-300">
-                  <label class="cursor-pointer" onclick="this.nextElementSibling.click()">
-                    <span class="font-medium text-blue-400 hover:text-blue-300">
-                      Click to upload
-                    </span>
-                    <span> or drag and drop</span>
-                  </label>
-                  <.live_file_input upload={@uploads.images} class="sr-only" />
-                </div>
-                <p class="text-xs text-gray-400">PNG, JPG, GIF, WebP up to 5MB</p>
-                <p class="text-xs text-gray-400">
-                  Maximum {@max_upload_entries} files at once
-                </p>
-              </div>
-            </div>
-          </form>
-          
-<!-- Upload Progress -->
-          <%= for entry <- @uploads.images.entries do %>
-            <div class="mt-2 bg-gray-700 rounded p-2">
-              <div class="flex items-center justify-between text-sm">
-                <span class="text-gray-200">{entry.client_name}</span>
-                <span class="text-gray-400">{entry.progress}%</span>
-              </div>
-              <div class="w-full bg-gray-600 rounded-full h-2 mt-1">
-                <div
-                  class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={"width: #{entry.progress}%"}
-                >
-                </div>
-              </div>
-            </div>
-          <% end %>
-          
-<!-- Upload Errors -->
-          <%= for err <- upload_errors(@uploads.images) do %>
-            <div class="mt-2 text-sm text-red-400">
-              {error_to_string(err)}
-            </div>
-          <% end %>
-        </div>
+  <div :if={@mode == :edit} class="px-4 mt-8">
+    <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
+      <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
+        <h2 class="text-xl font-semibold text-white">Add New Objects</h2>
       </div>
-    </div>
-  <% end %>
-  
-<!-- Edit Object Modal -->
-  <%= if @editing_object do %>
-    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" phx-click-away="cancel_edit">
-        <div class="flex items-center gap-4 mb-6">
-          <img
-            src={~p"/images/#{@editing_object.id}"}
-            alt={@editing_object.name}
-            class="w-16 h-16 object-cover rounded"
-          />
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">Edit Object</h3>
-            <p class="text-sm text-gray-600">Modify the display name or delete this object</p>
-          </div>
-        </div>
 
-        <form phx-submit="update_object_name" class="space-y-4">
-          <input type="hidden" name="object_id" value={@editing_object.id} />
-
-          <div>
-            <label for="object_name" class="block text-sm font-medium text-gray-700 mb-2">
-              Display Name
-            </label>
-            <input
-              type="text"
-              id="object_name"
-              name="name"
-              value={@editing_object.name}
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              autofocus
-              required
-            />
-          </div>
-
-          <div class="flex justify-between items-center pt-4">
-            <button
-              type="button"
-              phx-click="delete_object"
-              phx-value-object_id={@editing_object.id}
-              class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-            >
-              Delete Object
-            </button>
-
-            <div class="flex gap-2">
-              <button
-                type="button"
-                phx-click="cancel_edit"
-                class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+      <div class="p-6">
+        <form id="upload-form" phx-submit="save_images" phx-change="validate">
+          <div
+            id="file-drop-zone"
+            class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors bg-gray-750"
+            phx-hook="FileDropZone"
+            phx-drop-target={@uploads.images.ref}
+            data-max-files={@max_upload_entries}
+          >
+            <div class="space-y-2">
+              <svg
+                class="mx-auto h-12 w-12 text-gray-400"
+                stroke="currentColor"
+                fill="none"
+                viewBox="0 0 48 48"
               >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                Save Changes
-              </button>
+                <path
+                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <div class="text-gray-300">
+                <label class="cursor-pointer" onclick="this.nextElementSibling.click()">
+                  <span class="font-medium text-blue-400 hover:text-blue-300">
+                    Click to upload
+                  </span>
+                  <span> or drag and drop</span>
+                </label>
+                <.live_file_input upload={@uploads.images} class="sr-only" />
+              </div>
+              <p class="text-xs text-gray-400">PNG, JPG, GIF, WebP up to 5MB</p>
+              <p class="text-xs text-gray-400">
+                Maximum {@max_upload_entries} files at once
+              </p>
             </div>
           </div>
         </form>
+        
+<!-- Upload Progress -->
+        <div :for={entry <- @uploads.images.entries} class="mt-2 bg-gray-700 rounded p-2">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-200">{entry.client_name}</span>
+            <span class="text-gray-400">{entry.progress}%</span>
+          </div>
+          <div class="w-full bg-gray-600 rounded-full h-2 mt-1">
+            <div
+              class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              style={"width: #{entry.progress}%"}
+            >
+            </div>
+          </div>
+        </div>
+        
+<!-- Upload Errors -->
+        <div :for={err <- upload_errors(@uploads.images)} class="mt-2 text-sm text-red-400">
+          {error_to_string(err)}
+        </div>
       </div>
     </div>
-  <% end %>
+  </div>
+  
+<!-- Edit Object Modal -->
+  <div
+    :if={@editing_object}
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+  >
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" phx-click-away="cancel_edit">
+      <div class="flex items-center gap-4 mb-6">
+        <img
+          src={~p"/images/#{@editing_object.id}"}
+          alt={@editing_object.name}
+          class="w-16 h-16 object-cover rounded"
+        />
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Edit Object</h3>
+          <p class="text-sm text-gray-600">Modify the display name or delete this object</p>
+        </div>
+      </div>
+
+      <form phx-submit="update_object_name" class="space-y-4">
+        <input type="hidden" name="object_id" value={@editing_object.id} />
+
+        <div>
+          <label for="object_name" class="block text-sm font-medium text-gray-700 mb-2">
+            Display Name
+          </label>
+          <input
+            type="text"
+            id="object_name"
+            name="name"
+            value={@editing_object.name}
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            autofocus
+            required
+          />
+        </div>
+
+        <div class="flex justify-between items-center pt-4">
+          <button
+            type="button"
+            phx-click="delete_object"
+            phx-value-object_id={@editing_object.id}
+            class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+          >
+            Delete Object
+          </button>
+
+          <div class="flex gap-2">
+            <button
+              type="button"
+              phx-click="cancel_edit"
+              class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>

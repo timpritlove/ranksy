@@ -8,6 +8,6 @@ defmodule Ranksy.Cldr do
 
   use Cldr,
     locales: ["en", "de"],
-    default_locale: "en",
+    default_locale: "de",
     providers: [Cldr.Number, Cldr.DateTime, Cldr.Calendar]
 end
