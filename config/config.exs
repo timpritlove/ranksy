@@ -82,11 +82,7 @@ config :ranksy, :access_tracking,
   update_interval: 30_000
 
 # Admin authentication configuration
-# username: Admin username for basic auth
-# password: Admin password for basic auth
-config :ranksy, :admin_auth,
-  username: "admin",
-  password: "admin123"
+# In development, credentials are set here. In production, set via environment variables (see runtime.exs)
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

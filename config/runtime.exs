@@ -119,4 +119,11 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
+  admin_username = System.get_env("ADMIN_USERNAME") || raise "environment variable ADMIN_USERNAME is missing."
+  admin_password = System.get_env("ADMIN_PASSWORD") || raise "environment variable ADMIN_PASSWORD is missing."
+
+  config :ranksy, :admin_auth,
+    username: admin_username,
+    password: admin_password
 end

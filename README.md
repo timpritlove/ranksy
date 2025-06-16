@@ -22,8 +22,7 @@ The admin dashboard is available at [`localhost:4000/admin`](http://localhost:40
 - Password: `dev`
 
 **Production:**
-- Username: `admin` 
-- Password: `admin123`
+- Set via environment variables (see below)
 
 ### Admin Features
 
@@ -35,13 +34,21 @@ The admin dashboard is available at [`localhost:4000/admin`](http://localhost:40
 
 ### Configuration
 
-Admin credentials can be configured in `config/config.exs`:
+Admin credentials can be configured in development in `config/dev.exs`:
 
 ```elixir
 config :ranksy, :admin_auth,
-  username: "your_username",
-  password: "your_password"
+  username: "admin",
+  password: "dev"
 ```
+
+For production, set the following environment variables (e.g. for Fly.io):
+
+```sh
+fly secrets set ADMIN_USERNAME=your_admin_username ADMIN_PASSWORD=your_admin_password
+```
+
+These will be picked up automatically at runtime.
 
 ## Deployment
 
