@@ -27,7 +27,7 @@ kill_signal = 'SIGTERM'
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
-  cpus = 4
+  cpus = 1
 
 [[statics]]
   guest_path = '/app/lib/ranksy-0.1.0/priv/static'
