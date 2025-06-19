@@ -534,4 +534,37 @@ defmodule Ranksy.TierLists do
       tier_list -> delete_tier_list(tier_list)
     end
   end
+
+  @doc """
+  Deletes all stale tier lists (no objects and not accessed via any URL in the last month).
+  Returns {count, [deleted_ids]}.
+  """
+  def delete_stale_tier_lists do
+    cutoff = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
+    # Get all tier lists with admin metadata
+    tier_lists = list_tier_lists_with_admin_metadata()
+
+    stale =
+      Enum.filter(tier_lists, fn tl ->
+        tl.object_count == 0 and
+          Enum.all?([
+            tl.edit_last_access,
+            tl.view_last_access,
+            tl.use_last_access
+          ], fn last_access ->
+            is_nil(last_access) or DateTime.compare(last_access, cutoff) == :lt
+          end)
+      end)
+
+    deleted =
+      Enum.map(stale, fn tl ->
+        case admin_delete_tier_list(tl.id) do
+          {:ok, _} -> tl.id
+          _ -> nil
+        end
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    {length(deleted), deleted}
+  end
 end

@@ -78,6 +78,24 @@ defmodule RanksyWeb.AdminLive do
     end
   end
 
+  @impl true
+  def handle_event("delete_stale_tier_lists", _params, socket) do
+    {count, _ids} = TierLists.delete_stale_tier_lists()
+    tier_lists = TierLists.list_tier_lists_with_admin_metadata()
+    sorted_tier_lists = sort_tier_lists(tier_lists, socket.assigns.sort_by, socket.assigns.sort_order)
+    msg =
+      cond do
+        count == 0 -> "No stale tier lists found."
+        count == 1 -> "1 stale tier list deleted."
+        true -> "#{count} stale tier lists deleted."
+      end
+    socket =
+      socket
+      |> assign(:tier_lists, sorted_tier_lists)
+      |> put_flash(:info, msg)
+    {:noreply, socket}
+  end
+
   defp sort_tier_lists(tier_lists, field, order) do
     Enum.sort_by(
       tier_lists,
@@ -157,5 +175,27 @@ defmodule RanksyWeb.AdminLive do
     else
       "↕"
     end
+  end
+
+  defp to_datetime(nil), do: nil
+  defp to_datetime(%DateTime{} = dt), do: dt
+  defp to_datetime(%NaiveDateTime{} = ndt), do: DateTime.from_naive!(ndt, "Etc/UTC")
+
+  # Returns true if the tier list is stale (no objects and no access in the last month)
+  defp stale_tier_list?(tier_list) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
+    tier_list.object_count == 0 and
+      Enum.all?([
+        tier_list.edit_last_access,
+        tier_list.view_last_access,
+        tier_list.use_last_access
+      ], fn last_access ->
+        dt = to_datetime(last_access)
+        is_nil(dt) or DateTime.compare(dt, cutoff) == :lt
+      end)
+  end
+
+  defp stale_row_class(tier_list) do
+    if stale_tier_list?(tier_list), do: "bg-red-950/40 border-l-4 border-red-500 animate-pulse-stale", else: ""
   end
 end
