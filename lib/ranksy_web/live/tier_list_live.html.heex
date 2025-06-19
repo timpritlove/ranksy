@@ -1,4 +1,5 @@
-<div class="min-h-screen bg-gray-900 text-white">
+<RanksyWeb.Layouts.app flash={@flash}>
+  <div class="min-h-screen bg-base-100 text-base-content">
   <!-- Title - Big and Centered -->
   <div class="text-center py-8">
     <form
@@ -11,7 +12,7 @@
         type="text"
         name="title"
         value={@tier_list.title}
-        class="text-6xl font-bold text-black mb-4 bg-gray-200 border-2 border-gray-400 text-center focus:outline-none focus:border-blue-500 focus:bg-white min-w-[300px] rounded-lg px-4 py-2"
+        class="text-6xl font-bold text-base-content mb-4 input input-bordered input-lg text-center min-w-[300px]"
         autofocus
         phx-key="Escape"
         phx-keyup="cancel_edit_title"
@@ -21,8 +22,8 @@
     <h1
       :if={not (@mode == :edit and @editing_title)}
       class={[
-        "text-6xl font-bold text-white mb-4",
-        if(@mode == :edit, do: "cursor-pointer hover:text-gray-300 transition-colors", else: "")
+        "text-6xl font-bold text-base-content mb-4",
+        if(@mode == :edit, do: "cursor-pointer hover:text-base-content/70 transition-colors", else: "")
       ]}
       phx-click={if @mode == :edit, do: "edit_title", else: nil}
       title={if @mode == :edit, do: "Click to edit title", else: nil}
@@ -36,7 +37,7 @@
     <!-- Tiers -->
     <div
       :for={tier <- @tiers}
-      class="tier-row flex rounded-lg overflow-hidden shadow-lg"
+      class="tier-row flex rounded-box overflow-hidden shadow-xl"
       style={"background-color: #{tier.color}"}
     >
       <!-- Tier Letter - Huge and on the Left -->
@@ -67,11 +68,11 @@
           <img
             src={~p"/images/#{object.id}"}
             alt={object.name}
-            class="object-image w-20 h-20 object-cover rounded"
+            class="object-image w-20 h-20 object-cover rounded-lg"
             loading="lazy"
             draggable="false"
           />
-          <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px] drop-shadow">
+          <div class="object-name text-xs text-center mt-1 text-neutral-content truncate max-w-[80px] drop-shadow">
             {object.name}
           </div>
 
@@ -82,7 +83,7 @@
             <button
               phx-click="edit_object"
               phx-value-object_id={object.id}
-              class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600"
+              class="btn btn-circle btn-xs btn-info"
               title="Edit object"
             >
               ✏️
@@ -93,17 +94,17 @@
     </div>
     
 <!-- Holding Zone - Light Background -->
-    <div class="tier-row rounded-lg overflow-hidden shadow-lg bg-gray-100 mt-8">
+    <div class="tier-row rounded-box overflow-hidden shadow-xl bg-base-200 mt-8">
       <!-- Holding Zone Objects -->
       <div
-        class="tier-objects w-full min-h-[160px] p-4 flex flex-wrap gap-3 items-center bg-gray-50"
+        class="tier-objects w-full min-h-[160px] p-4 flex flex-wrap gap-3 items-center bg-base-300"
         data-drop-zone={if @mode != :view, do: "true", else: "false"}
         data-tier-id={Ranksy.TierLists.holding_zone_id()}
       >
         <div
           :for={object <- unassigned_objects(@objects)}
           class={[
-            "tier-object group relative bg-white rounded-lg p-2 transition-shadow select-none border border-gray-200",
+            "tier-object group relative bg-base-100 rounded-lg p-2 transition-shadow select-none border border-base-300",
             if(@mode != :view,
               do: "cursor-move hover:shadow-md touch-target",
               else: "cursor-default"
@@ -117,11 +118,11 @@
           <img
             src={~p"/images/#{object.id}"}
             alt={object.name}
-            class="object-image w-20 h-20 object-cover rounded"
+            class="object-image w-20 h-20 object-cover rounded-lg"
             loading="lazy"
             draggable="false"
           />
-          <div class="object-name text-xs text-center mt-1 text-gray-700 truncate max-w-[80px] drop-shadow">
+          <div class="object-name text-xs text-center mt-1 text-base-content truncate max-w-[80px] drop-shadow">
             {object.name}
           </div>
 
@@ -132,7 +133,7 @@
             <button
               phx-click="edit_object"
               phx-value-object_id={object.id}
-              class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-blue-600"
+              class="btn btn-circle btn-xs btn-info"
               title="Edit object"
             >
               ✏️
@@ -147,20 +148,20 @@
   <div class="px-4 py-8 mt-12">
     <div
       :if={@mode == :edit}
-      class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden"
+      class="card bg-base-200 shadow-xl border border-base-300"
     >
-      <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
-        <h3 class="text-xl font-semibold text-white">Share Your Tier List</h3>
+      <div class="card-header px-6 py-4 bg-base-300 border-b border-base-content/10">
+        <h3 class="card-title text-xl">Share Your Tier List</h3>
       </div>
 
-      <div class="p-6">
+      <div class="card-body">
         <div class="space-y-4">
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">
+              <label class="block text-sm font-medium text-base-content">
                 Edit URL (you can modify):
               </label>
-              <div class="text-xs text-gray-400 text-right">
+              <div class="text-xs text-base-content/60 text-right">
                 <div :if={
                   match?(%{last_accessed_at: _, access_count: _}, Map.get(@access_stats, "edit"))
                 }>
@@ -179,14 +180,14 @@
                 </div>
               </div>
             </div>
-            <div class="bg-gray-700 rounded-lg border border-gray-600">
+            <div class="bg-base-300 rounded-box border border-base-content/20">
               <a
                 href={~p"/edit/#{@tier_list.edit_token}"}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+                class="link link-hover block p-4 hover:bg-base-content/10 transition-colors"
               >
-                <code class="text-green-400 text-sm break-all">
+                <code class="text-success text-sm break-all">
                   {url(~p"/edit/#{@tier_list.edit_token}")}
                 </code>
               </a>
@@ -194,10 +195,10 @@
           </div>
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">
+              <label class="block text-sm font-medium text-base-content">
                 Use URL (can move objects, no editing):
               </label>
-              <div class="text-xs text-gray-400 text-right">
+              <div class="text-xs text-base-content/60 text-right">
                 <div :if={
                   match?(%{last_accessed_at: _, access_count: _}, Map.get(@access_stats, "use"))
                 }>
@@ -216,14 +217,14 @@
                 </div>
               </div>
             </div>
-            <div class="bg-gray-700 rounded-lg border border-gray-600">
+            <div class="bg-base-300 rounded-box border border-base-content/20">
               <a
                 href={~p"/use/#{@tier_list.use_token}"}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+                class="link link-hover block p-4 hover:bg-base-content/10 transition-colors"
               >
-                <code class="text-yellow-400 text-sm break-all">
+                <code class="text-warning text-sm break-all">
                   {url(~p"/use/#{@tier_list.use_token}")}
                 </code>
               </a>
@@ -231,10 +232,10 @@
           </div>
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">
+              <label class="block text-sm font-medium text-base-content">
                 View-only URL (read-only with live updates):
               </label>
-              <div class="text-xs text-gray-400 text-right">
+              <div class="text-xs text-base-content/60 text-right">
                 <div :if={
                   match?(%{last_accessed_at: _, access_count: _}, Map.get(@access_stats, "view"))
                 }>
@@ -253,14 +254,14 @@
                 </div>
               </div>
             </div>
-            <div class="bg-gray-700 rounded-lg border border-gray-600">
+            <div class="bg-base-300 rounded-box border border-base-content/20">
               <a
                 href={~p"/view/#{@tier_list.view_token}"}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="block p-3 hover:bg-gray-600 transition-colors rounded-lg"
+                class="link link-hover block p-4 hover:bg-base-content/10 transition-colors"
               >
-                <code class="text-blue-400 text-sm break-all">
+                <code class="text-info text-sm break-all">
                   {url(~p"/view/#{@tier_list.view_token}")}
                 </code>
               </a>
@@ -270,10 +271,10 @@
       </div>
     </div>
     <div :if={@mode != :edit} class="text-center">
-      <p :if={@mode == :view} class="text-gray-400 text-lg">
+      <p :if={@mode == :view} class="text-base-content/60 text-lg">
         View-only mode - Live updates enabled
       </p>
-      <p :if={@mode != :view} class="text-gray-400 text-lg">
+      <p :if={@mode != :view} class="text-base-content/60 text-lg">
         Use mode - You can move objects but not edit them
       </p>
     </div>
@@ -281,23 +282,23 @@
   
 <!-- File Upload Section -->
   <div :if={@mode == :edit} class="px-4 mt-8">
-    <div class="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-      <div class="px-6 py-4 bg-gray-700 border-b border-gray-600">
-        <h2 class="text-xl font-semibold text-white">Add New Objects</h2>
+    <div class="card bg-base-200 shadow-xl border border-base-300">
+      <div class="card-header px-6 py-4 bg-base-300 border-b border-base-content/10">
+        <h2 class="card-title text-xl">Add New Objects</h2>
       </div>
 
-      <div class="p-6">
+      <div class="card-body">
         <form id="upload-form" phx-submit="save_images" phx-change="validate">
           <div
             id="file-drop-zone"
-            class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors bg-gray-750"
+            class="border-2 border-dashed border-base-content/30 rounded-box p-8 text-center hover:border-base-content/50 transition-colors bg-base-300/50"
             phx-hook="FileDropZone"
             phx-drop-target={@uploads.images.ref}
             data-max-files={@max_upload_entries}
           >
             <div class="space-y-2">
               <svg
-                class="mx-auto h-12 w-12 text-gray-400"
+                class="mx-auto h-12 w-12 text-base-content/60"
                 stroke="currentColor"
                 fill="none"
                 viewBox="0 0 48 48"
@@ -309,17 +310,17 @@
                   stroke-linejoin="round"
                 />
               </svg>
-              <div class="text-gray-300">
+              <div class="text-base-content">
                 <label class="cursor-pointer" onclick="this.nextElementSibling.click()">
-                  <span class="font-medium text-blue-400 hover:text-blue-300">
+                  <span class="font-medium text-primary hover:text-primary/80">
                     Click to upload
                   </span>
                   <span> or drag and drop</span>
                 </label>
                 <.live_file_input upload={@uploads.images} class="sr-only" />
               </div>
-              <p class="text-xs text-gray-400">PNG, JPG, GIF, WebP up to 5MB</p>
-              <p class="text-xs text-gray-400">
+              <p class="text-xs text-base-content/60">PNG, JPG, GIF, WebP up to 5MB</p>
+              <p class="text-xs text-base-content/60">
                 Maximum {@max_upload_entries} files at once
               </p>
             </div>
@@ -327,14 +328,14 @@
         </form>
         
 <!-- Upload Progress -->
-        <div :for={entry <- @uploads.images.entries} class="mt-2 bg-gray-700 rounded p-2">
+        <div :for={entry <- @uploads.images.entries} class="mt-2 bg-base-300 rounded-box p-4">
           <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-200">{entry.client_name}</span>
-            <span class="text-gray-400">{entry.progress}%</span>
+            <span class="text-base-content">{entry.client_name}</span>
+            <span class="text-base-content/60">{entry.progress}%</span>
           </div>
-          <div class="w-full bg-gray-600 rounded-full h-2 mt-1">
+          <div class="w-full bg-base-content/20 rounded-full h-2 mt-1">
             <div
-              class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              class="bg-primary h-2 rounded-full transition-all duration-300"
               style={"width: #{entry.progress}%"}
             >
             </div>
@@ -342,7 +343,7 @@
         </div>
         
 <!-- Upload Errors -->
-        <div :for={err <- upload_errors(@uploads.images)} class="mt-2 text-sm text-red-400">
+        <div :for={err <- upload_errors(@uploads.images)} class="mt-2 text-sm text-error">
           {error_to_string(err)}
         </div>
       </div>
@@ -352,45 +353,45 @@
 <!-- Edit Object Modal -->
   <div
     :if={@editing_object}
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    class="modal modal-open"
   >
-    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4" phx-click-away="cancel_edit">
+    <div class="modal-box" phx-click-away="cancel_edit">
       <div class="flex items-center gap-4 mb-6">
         <img
           src={~p"/images/#{@editing_object.id}"}
           alt={@editing_object.name}
-          class="w-16 h-16 object-cover rounded"
+          class="w-16 h-16 object-cover rounded-lg"
         />
         <div>
-          <h3 class="text-lg font-semibold text-gray-900">Edit Object</h3>
-          <p class="text-sm text-gray-600">Modify the display name or delete this object</p>
+          <h3 class="text-lg font-semibold text-base-content">Edit Object</h3>
+          <p class="text-sm text-base-content/70">Modify the display name or delete this object</p>
         </div>
       </div>
 
       <form phx-submit="update_object_name" class="space-y-4">
         <input type="hidden" name="object_id" value={@editing_object.id} />
 
-        <div>
-          <label for="object_name" class="block text-sm font-medium text-gray-700 mb-2">
-            Display Name
+        <div class="form-control">
+          <label for="object_name" class="label">
+            <span class="label-text">Display Name</span>
           </label>
           <input
             type="text"
             id="object_name"
             name="name"
             value={@editing_object.name}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            class="input input-bordered w-full"
             autofocus
             required
           />
         </div>
 
-        <div class="flex justify-between items-center pt-4">
+        <div class="modal-action justify-between">
           <button
             type="button"
             phx-click="delete_object"
             phx-value-object_id={@editing_object.id}
-            class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            class="btn btn-error"
           >
             Delete Object
           </button>
@@ -399,13 +400,13 @@
             <button
               type="button"
               phx-click="cancel_edit"
-              class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              class="btn btn-ghost"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              class="btn btn-primary"
             >
               Save Changes
             </button>
@@ -414,4 +415,5 @@
       </form>
     </div>
   </div>
-</div>
+  </div>
+</RanksyWeb.Layouts.app>

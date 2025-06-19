@@ -14,7 +14,7 @@ defmodule RanksyWeb.AdminLive do
       |> assign(:sort_by, :inserted_at)
       |> assign(:sort_order, :desc)
       |> assign(:page_title, "Admin - Tier Lists")
-      |> assign(:locale, "en")
+      |> assign(:locale, Ranksy.Cldr.default_locale().cldr_locale_name |> Atom.to_string())
 
     {:ok, socket}
   end

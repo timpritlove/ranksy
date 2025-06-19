@@ -1,32 +1,35 @@
-<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-  <div class="max-w-md w-full space-y-8">
-    <div>
-      <h1 class="text-center text-4xl font-bold text-gray-900 mb-2">Ranksy</h1>
-      <p class="text-center text-lg text-gray-600">Create and share tier lists</p>
-    </div>
+<RanksyWeb.Layouts.app flash={@flash}>
+  <div class="hero min-h-[80vh]">
+    <div class="hero-content text-center">
+      <div class="max-w-md">
+        <h1 class="text-5xl font-bold text-primary mb-4">Ranksy</h1>
+        <p class="text-lg text-base-content/70 mb-8">Create and share tier lists</p>
+        
+        <div class="card bg-base-200 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title justify-center text-2xl mb-6">Create New Tier List</h2>
 
-    <div class="bg-white rounded-lg shadow-md p-8">
-      <h2 class="text-2xl font-semibold text-gray-900 mb-6">Create New Tier List</h2>
+            <.form for={@form} phx-change="validate" phx-submit="create" id="tier-list-form">
+              <.input
+                field={@form[:title]}
+                type="text"
+                label="Title"
+                placeholder="My Awesome Tier List"
+              />
 
-      <.simple_form for={@form} phx-change="validate" phx-submit="create" id="tier-list-form">
-        <.input
-          field={@form[:title]}
-          type="text"
-          label="Title"
-          placeholder="My Awesome Tier List"
-          required
-        />
+              <div class="mt-6">
+                <.button class="btn btn-primary btn-block" phx-disable-with="Creating...">
+                  Create Tier List
+                </.button>
+              </div>
+            </.form>
+          </div>
+        </div>
 
-        <:actions>
-          <.button class="w-full" phx-disable-with="Creating...">
-            Create Tier List
-          </.button>
-        </:actions>
-      </.simple_form>
-    </div>
-
-    <div class="text-center text-sm text-gray-500">
-      <p>Once created, you'll get unique URLs for editing and sharing your tier list.</p>
+        <div class="text-center text-sm text-base-content/60 mt-6">
+          <p>Once created, you'll get unique URLs for editing and sharing your tier list.</p>
+        </div>
+      </div>
     </div>
   </div>
-</div>
+</RanksyWeb.Layouts.app>

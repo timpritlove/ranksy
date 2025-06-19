@@ -22,6 +22,10 @@ import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+// Import DaisyUI
+import "../vendor/daisyui"
+import "../vendor/daisyui-theme"
+
 // Import hooks
 import TierListDragDrop from "./hooks/tier_list_drag_drop"
 import FileDropZone from "./hooks/file_drop_zone"
