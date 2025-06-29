@@ -124,17 +124,17 @@
       </div>
       
 <!-- Tier Lists Table -->
-      <div class="card bg-base-200 shadow-xl border border-base-300">
-        <div class="card-header px-3 sm:px-4 py-3 sm:py-4 bg-base-300 border-b border-base-content/10">
-          <h2 class="card-title text-lg sm:text-xl">Tier Lists</h2>
+      <div class="w-full bg-base-200 shadow-xl border border-base-300 rounded-box">
+        <div class="px-3 sm:px-4 py-3 sm:py-4 bg-base-300 border-b border-base-content/10 rounded-t-box">
+          <h2 class="text-lg sm:text-xl font-bold">Tier Lists</h2>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="table table-zebra w-full table-xs">
+        <div class="w-full overflow-x-auto">
+          <table class="table table-zebra w-full table-xs min-w-full">
             <thead>
               <tr>
                 <th class="w-12">#</th>
-                <th>
+                <th class="min-w-[200px]">
                   <button
                     phx-click="sort"
                     phx-value-field="title"
@@ -147,7 +147,7 @@
                   </button>
                 </th>
 
-                <th>
+                <th class="min-w-[140px]">
                   <button
                     phx-click="sort"
                     phx-value-field="inserted_at"
@@ -160,7 +160,7 @@
                   </button>
                 </th>
 
-                <th>
+                <th class="w-20">
                   <button
                     phx-click="sort"
                     phx-value-field="object_count"
@@ -173,7 +173,7 @@
                   </button>
                 </th>
 
-                <th>
+                <th class="w-20">
                   <button
                     phx-click="sort"
                     phx-value-field="total_size"
@@ -186,7 +186,7 @@
                   </button>
                 </th>
 
-                <th>
+                <th class="min-w-[120px]">
                   <button
                     phx-click="sort"
                     phx-value-field="edit_access_count"
@@ -198,8 +198,8 @@
                     </span>
                   </button>
                 </th>
-
-                <th>
+                
+                <th class="min-w-[120px]">
                   <button
                     phx-click="sort"
                     phx-value-field="use_access_count"
@@ -211,8 +211,8 @@
                     </span>
                   </button>
                 </th>
-
-                <th>
+                
+                <th class="min-w-[120px]">
                   <button
                     phx-click="sort"
                     phx-value-field="view_access_count"
@@ -224,9 +224,9 @@
                     </span>
                   </button>
                 </th>
-
-                <th>Links</th>
-                <th>Actions</th>
+                
+                <th class="min-w-[120px]">Links</th>
+                <th class="w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -237,13 +237,13 @@
                 <td class="px-2 py-2 text-center font-mono text-xs text-base-content/60">
                   {Map.get(tier_list, :row_number, "—")}
                 </td>
-
-                <td class="px-2 py-2 whitespace-nowrap">
+                
+                <td class="px-2 py-2">
                   <div class="text-xs font-medium text-base-content flex items-center gap-2">
-                    {tier_list.title}
+                    <span class="truncate max-w-[180px]" title={tier_list.title}>{tier_list.title}</span>
                     <span
                       :if={stale_tier_list?(tier_list)}
-                      class="badge badge-error badge-sm ml-1 animate-pulse-stale"
+                      class="badge badge-error badge-sm flex-shrink-0 animate-pulse-stale"
                       title="Stale: No objects and not accessed in the last month"
                     >
                       <svg
