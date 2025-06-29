@@ -6,11 +6,17 @@ defmodule RanksyWeb.AdminLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    # Subscribe to admin updates
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Ranksy.PubSub, "admin:tier_lists")
+    end
+
     tier_lists = TierLists.list_tier_lists_with_admin_metadata()
+    sorted_tier_lists = sort_tier_lists(tier_lists, :inserted_at, :desc)
 
     socket =
       socket
-      |> assign(:tier_lists, tier_lists)
+      |> assign(:tier_lists, sorted_tier_lists)
       |> assign(:sort_by, :inserted_at)
       |> assign(:sort_order, :desc)
       |> assign(:page_title, "Admin - Tier Lists")
@@ -82,17 +88,42 @@ defmodule RanksyWeb.AdminLive do
   def handle_event("delete_stale_tier_lists", _params, socket) do
     {count, _ids} = TierLists.delete_stale_tier_lists()
     tier_lists = TierLists.list_tier_lists_with_admin_metadata()
-    sorted_tier_lists = sort_tier_lists(tier_lists, socket.assigns.sort_by, socket.assigns.sort_order)
+
+    sorted_tier_lists =
+      sort_tier_lists(tier_lists, socket.assigns.sort_by, socket.assigns.sort_order)
+
     msg =
       cond do
         count == 0 -> "No stale tier lists found."
         count == 1 -> "1 stale tier list deleted."
         true -> "#{count} stale tier lists deleted."
       end
+
     socket =
       socket
       |> assign(:tier_lists, sorted_tier_lists)
       |> put_flash(:info, msg)
+
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({event, _data}, socket)
+      when event in [
+             :tier_list_created,
+             :tier_list_updated,
+             :tier_list_deleted,
+             :stale_tier_lists_deleted,
+             :object_created,
+             :object_deleted
+           ] do
+    # Refresh the tier lists when we receive PubSub notifications
+    tier_lists = TierLists.list_tier_lists_with_admin_metadata()
+
+    sorted_tier_lists =
+      sort_tier_lists(tier_lists, socket.assigns.sort_by, socket.assigns.sort_order)
+
+    socket = assign(socket, :tier_lists, sorted_tier_lists)
     {:noreply, socket}
   end
 
@@ -110,6 +141,8 @@ defmodule RanksyWeb.AdminLive do
       end,
       order
     )
+    |> Enum.with_index(1)
+    |> Enum.map(fn {tier_list, index} -> Map.put(tier_list, :row_number, index) end)
   end
 
   defp format_file_size(nil), do: "0 B"
@@ -184,18 +217,24 @@ defmodule RanksyWeb.AdminLive do
   # Returns true if the tier list is stale (no objects and no access in the last month)
   defp stale_tier_list?(tier_list) do
     cutoff = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
+
     tier_list.object_count == 0 and
-      Enum.all?([
-        tier_list.edit_last_access,
-        tier_list.view_last_access,
-        tier_list.use_last_access
-      ], fn last_access ->
-        dt = to_datetime(last_access)
-        is_nil(dt) or DateTime.compare(dt, cutoff) == :lt
-      end)
+      Enum.all?(
+        [
+          tier_list.edit_last_access,
+          tier_list.view_last_access,
+          tier_list.use_last_access
+        ],
+        fn last_access ->
+          dt = to_datetime(last_access)
+          is_nil(dt) or DateTime.compare(dt, cutoff) == :lt
+        end
+      )
   end
 
   defp stale_row_class(tier_list) do
-    if stale_tier_list?(tier_list), do: "bg-red-950/40 border-l-4 border-red-500 animate-pulse-stale", else: ""
+    if stale_tier_list?(tier_list),
+      do: "bg-red-950/40 border-l-4 border-red-500 animate-pulse-stale",
+      else: ""
   end
 end

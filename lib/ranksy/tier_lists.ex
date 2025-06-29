@@ -11,6 +11,9 @@ defmodule Ranksy.TierLists do
   # Constant for the holding zone identifier
   @holding_zone_id "holding_zone"
 
+  # PubSub topic for admin updates
+  @admin_topic "admin:tier_lists"
+
   @doc """
   Returns the holding zone identifier.
   """
@@ -59,6 +62,7 @@ defmodule Ranksy.TierLists do
     |> case do
       {:ok, tier_list} ->
         create_default_tiers(tier_list)
+        broadcast_admin_update(:tier_list_created, tier_list)
         {:ok, tier_list}
 
       error ->
@@ -73,13 +77,28 @@ defmodule Ranksy.TierLists do
     tier_list
     |> TierList.changeset(attrs)
     |> Repo.update()
+    |> case do
+      {:ok, updated_tier_list} ->
+        broadcast_admin_update(:tier_list_updated, updated_tier_list)
+        {:ok, updated_tier_list}
+
+      error ->
+        error
+    end
   end
 
   @doc """
   Deletes a tier_list.
   """
   def delete_tier_list(%TierList{} = tier_list) do
-    Repo.delete(tier_list)
+    case Repo.delete(tier_list) do
+      {:ok, deleted_tier_list} ->
+        broadcast_admin_update(:tier_list_deleted, deleted_tier_list)
+        {:ok, deleted_tier_list}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -153,6 +172,14 @@ defmodule Ranksy.TierLists do
     %Object{}
     |> Object.changeset(attrs_with_position)
     |> Repo.insert()
+    |> case do
+      {:ok, object} ->
+        broadcast_admin_update(:object_created, %{tier_list_id: tier_list_id, object: object})
+        {:ok, object}
+
+      error ->
+        error
+    end
   end
 
   # Get the next available position for a tier
@@ -182,7 +209,18 @@ defmodule Ranksy.TierLists do
   Deletes an object.
   """
   def delete_object(%Object{} = object) do
-    Repo.delete(object)
+    case Repo.delete(object) do
+      {:ok, deleted_object} ->
+        broadcast_admin_update(:object_deleted, %{
+          tier_list_id: object.tier_list_id,
+          object: deleted_object
+        })
+
+        {:ok, deleted_object}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -547,13 +585,16 @@ defmodule Ranksy.TierLists do
     stale =
       Enum.filter(tier_lists, fn tl ->
         tl.object_count == 0 and
-          Enum.all?([
-            tl.edit_last_access,
-            tl.view_last_access,
-            tl.use_last_access
-          ], fn last_access ->
-            is_nil(last_access) or DateTime.compare(last_access, cutoff) == :lt
-          end)
+          Enum.all?(
+            [
+              tl.edit_last_access,
+              tl.view_last_access,
+              tl.use_last_access
+            ],
+            fn last_access ->
+              is_nil(last_access) or DateTime.compare(last_access, cutoff) == :lt
+            end
+          )
       end)
 
     deleted =
@@ -565,6 +606,17 @@ defmodule Ranksy.TierLists do
       end)
       |> Enum.reject(&is_nil/1)
 
+    # Broadcast batch deletion if any were deleted
+    if length(deleted) > 0 do
+      broadcast_admin_update(:stale_tier_lists_deleted, %{count: length(deleted), ids: deleted})
+    end
+
     {length(deleted), deleted}
+  end
+
+  # Private helper functions for PubSub broadcasting
+
+  defp broadcast_admin_update(event, data) do
+    Phoenix.PubSub.broadcast(Ranksy.PubSub, @admin_topic, {event, data})
   end
 end
