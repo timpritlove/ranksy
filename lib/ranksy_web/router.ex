@@ -26,6 +26,10 @@ defmodule RanksyWeb.Router do
     live "/view/:view_token", TierListLive
     live "/use/:use_token", TierListLive
     get "/images/:id", ImageController, :show
+
+    # Silence apple-touch-icon requests until we have proper icons
+    get "/apple-touch-icon.png", PageController, :apple_touch_icon
+    get "/apple-touch-icon-precomposed.png", PageController, :apple_touch_icon
   end
 
   # Admin section

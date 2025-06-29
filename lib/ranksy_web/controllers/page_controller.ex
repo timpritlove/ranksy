@@ -6,4 +6,10 @@ defmodule RanksyWeb.PageController do
     # so skip the default app layout.
     render(conn, :home, layout: false)
   end
+
+  def apple_touch_icon(conn, _params) do
+    # Return 204 No Content to silence apple-touch-icon requests
+    # until we have proper icons
+    send_resp(conn, 204, "")
+  end
 end
