@@ -33,12 +33,12 @@
               {if @locale == "en", do: "🇺🇸 EN", else: "🇩🇪 DE"}
             </button>
             <button
-              :if={Enum.any?(@tier_lists, &stale_tier_list?/1)}
+              :if={@stale_count > 0}
               phx-click="delete_stale_tier_lists"
               phx-value-confirm="true"
-              onclick="return confirm('Delete all stale tier lists? This cannot be undone. Only lists with no objects and no access in the last month will be deleted.')"
+              onclick="return confirm('Delete all stale tier lists? This cannot be undone. Only lists with no objects and no access in the last week will be deleted.')"
               class="btn btn-sm btn-error btn-outline"
-              title="Delete all stale tier lists (no objects, not accessed in a month)"
+              title="Delete all stale tier lists (no objects, not accessed in a week)"
             >
               <svg
                 class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2"
@@ -54,7 +54,7 @@
                 >
                 </path>
               </svg>
-              Delete Stale Tier Lists
+              Delete Stale Tier Lists ({@stale_count})
             </button>
             <.link navigate={~p"/"} class="btn btn-sm btn-outline">
               <svg
@@ -198,7 +198,7 @@
                     </span>
                   </button>
                 </th>
-                
+
                 <th class="min-w-[120px]">
                   <button
                     phx-click="sort"
@@ -211,7 +211,7 @@
                     </span>
                   </button>
                 </th>
-                
+
                 <th class="min-w-[120px]">
                   <button
                     phx-click="sort"
@@ -224,7 +224,7 @@
                     </span>
                   </button>
                 </th>
-                
+
                 <th class="min-w-[120px]">Links</th>
                 <th class="w-20">Actions</th>
               </tr>
@@ -237,14 +237,16 @@
                 <td class="px-2 py-2 text-center font-mono text-xs text-base-content/60">
                   {Map.get(tier_list, :row_number, "—")}
                 </td>
-                
+
                 <td class="px-2 py-2">
                   <div class="text-xs font-medium text-base-content flex items-center gap-2">
-                    <span class="truncate max-w-[180px]" title={tier_list.title}>{tier_list.title}</span>
+                    <span class="truncate max-w-[180px]" title={tier_list.title}>
+                      {tier_list.title}
+                    </span>
                     <span
                       :if={stale_tier_list?(tier_list)}
                       class="badge badge-error badge-sm flex-shrink-0 animate-pulse-stale"
-                      title="Stale: No objects and not accessed in the last month"
+                      title="Stale: No objects and not accessed in the last week"
                     >
                       <svg
                         class="w-3 h-3 mr-1 text-base-content"

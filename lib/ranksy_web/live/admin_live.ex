@@ -13,10 +13,12 @@ defmodule RanksyWeb.AdminLive do
 
     tier_lists = TierLists.list_tier_lists_with_admin_metadata()
     sorted_tier_lists = sort_tier_lists(tier_lists, :inserted_at, :desc)
+    stale_count = count_stale_tier_lists(tier_lists)
 
     socket =
       socket
       |> assign(:tier_lists, sorted_tier_lists)
+      |> assign(:stale_count, stale_count)
       |> assign(:sort_by, :inserted_at)
       |> assign(:sort_order, :desc)
       |> assign(:page_title, "Admin - Tier Lists")
@@ -92,6 +94,8 @@ defmodule RanksyWeb.AdminLive do
     sorted_tier_lists =
       sort_tier_lists(tier_lists, socket.assigns.sort_by, socket.assigns.sort_order)
 
+    stale_count = count_stale_tier_lists(tier_lists)
+
     msg =
       cond do
         count == 0 -> "No stale tier lists found."
@@ -102,6 +106,7 @@ defmodule RanksyWeb.AdminLive do
     socket =
       socket
       |> assign(:tier_lists, sorted_tier_lists)
+      |> assign(:stale_count, stale_count)
       |> put_flash(:info, msg)
 
     {:noreply, socket}
@@ -123,7 +128,13 @@ defmodule RanksyWeb.AdminLive do
     sorted_tier_lists =
       sort_tier_lists(tier_lists, socket.assigns.sort_by, socket.assigns.sort_order)
 
-    socket = assign(socket, :tier_lists, sorted_tier_lists)
+    stale_count = count_stale_tier_lists(tier_lists)
+
+    socket =
+      socket
+      |> assign(:tier_lists, sorted_tier_lists)
+      |> assign(:stale_count, stale_count)
+
     {:noreply, socket}
   end
 
@@ -210,27 +221,13 @@ defmodule RanksyWeb.AdminLive do
     end
   end
 
-  defp to_datetime(nil), do: nil
-  defp to_datetime(%DateTime{} = dt), do: dt
-  defp to_datetime(%NaiveDateTime{} = ndt), do: DateTime.from_naive!(ndt, "Etc/UTC")
-
-  # Returns true if the tier list is stale (no objects and no access in the last month)
-  defp stale_tier_list?(tier_list) do
-    cutoff = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
-
-    tier_list.object_count == 0 and
-      Enum.all?(
-        [
-          tier_list.edit_last_access,
-          tier_list.view_last_access,
-          tier_list.use_last_access
-        ],
-        fn last_access ->
-          dt = to_datetime(last_access)
-          is_nil(dt) or DateTime.compare(dt, cutoff) == :lt
-        end
-      )
+  # Count how many tier lists are stale
+  defp count_stale_tier_lists(tier_lists) do
+    Enum.count(tier_lists, &stale_tier_list?/1)
   end
+
+  # Delegate stale tier list check to TierLists module
+  defp stale_tier_list?(tier_list), do: TierLists.stale_tier_list?(tier_list)
 
   defp stale_row_class(tier_list) do
     if stale_tier_list?(tier_list),

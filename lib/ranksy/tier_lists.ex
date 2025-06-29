@@ -574,28 +574,35 @@ defmodule Ranksy.TierLists do
   end
 
   @doc """
-  Deletes all stale tier lists (no objects and not accessed via any URL in the last month).
+  Returns true if a tier list is considered stale.
+  A tier list is stale if it has no objects and hasn't been accessed in the last week.
+  """
+  def stale_tier_list?(tier_list) do
+    cutoff = DateTime.utc_now() |> DateTime.add(-7 * 24 * 60 * 60, :second)
+
+    tier_list.object_count == 0 and
+      Enum.all?(
+        [
+          tier_list.edit_last_access,
+          tier_list.view_last_access,
+          tier_list.use_last_access
+        ],
+        fn last_access ->
+          dt = to_datetime(last_access)
+          is_nil(dt) or DateTime.compare(dt, cutoff) == :lt
+        end
+      )
+  end
+
+  @doc """
+  Deletes all stale tier lists (no objects and not accessed via any URL in the last week).
   Returns {count, [deleted_ids]}.
   """
   def delete_stale_tier_lists do
-    cutoff = DateTime.utc_now() |> DateTime.add(-30 * 24 * 60 * 60, :second)
     # Get all tier lists with admin metadata
     tier_lists = list_tier_lists_with_admin_metadata()
 
-    stale =
-      Enum.filter(tier_lists, fn tl ->
-        tl.object_count == 0 and
-          Enum.all?(
-            [
-              tl.edit_last_access,
-              tl.view_last_access,
-              tl.use_last_access
-            ],
-            fn last_access ->
-              is_nil(last_access) or DateTime.compare(last_access, cutoff) == :lt
-            end
-          )
-      end)
+    stale = Enum.filter(tier_lists, &stale_tier_list?/1)
 
     deleted =
       Enum.map(stale, fn tl ->
@@ -619,4 +626,9 @@ defmodule Ranksy.TierLists do
   defp broadcast_admin_update(event, data) do
     Phoenix.PubSub.broadcast(Ranksy.PubSub, @admin_topic, {event, data})
   end
+
+  # Helper function to convert various datetime types to DateTime
+  defp to_datetime(nil), do: nil
+  defp to_datetime(%DateTime{} = dt), do: dt
+  defp to_datetime(%NaiveDateTime{} = ndt), do: DateTime.from_naive!(ndt, "Etc/UTC")
 end
