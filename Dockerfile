@@ -1,5 +1,5 @@
 # Use the official Elixir image
-FROM elixir:1.17-alpine AS builder
+FROM elixir:1.18.4-otp-27-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache build-base npm git python3
