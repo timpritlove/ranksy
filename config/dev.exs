@@ -95,4 +95,5 @@ config :ranksy, :access_tracking,
 # Development admin authentication - simple credentials for dev
 config :ranksy, :admin_auth,
   username: "admin",
-  password: "dev" # In production, set via environment variables (see runtime.exs)
+  # In production, set via environment variables (see runtime.exs)
+  password: "dev"
