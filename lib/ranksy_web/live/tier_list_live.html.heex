@@ -40,7 +40,7 @@
       <!-- Tiers -->
       <div
         :for={tier <- @tiers}
-        class="tier-row flex rounded-box overflow-hidden shadow-xl"
+        class="tier-row flex rounded-box overflow-visible shadow-xl"
         style={"background-color: #{tier.color}"}
       >
         <!-- Tier Letter - Huge and on the Left -->
@@ -105,7 +105,7 @@
       </div>
       
 <!-- Holding Zone - Light Background -->
-      <div class="tier-row rounded-box overflow-hidden shadow-xl bg-base-200 mt-8">
+      <div class="tier-row rounded-box overflow-visible shadow-xl bg-base-200 mt-8">
         <!-- Holding Zone Objects -->
         <div
           class="tier-objects w-full min-h-[160px] p-4 flex flex-wrap gap-3 items-center bg-base-300"
