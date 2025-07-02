@@ -7,6 +7,8 @@
     <.live_title default="Ranksy" suffix=" · Tier List Creator">
       {assigns[:page_title]}
     </.live_title>
+    <meta property="og:title" content={assigns[:page_title] || "Ranksy · Tier List Creator"} />
+    <meta property="og:site_name" content="Ranksy" />
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>

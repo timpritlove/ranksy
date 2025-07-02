@@ -40,6 +40,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:editing_object, nil)
           |> assign(:editing_title, false)
           |> assign(:access_stats, access_stats)
+          |> assign(:page_title, page_title_for_mode(tier_list.title, :edit))
           |> allow_upload(:images,
             accept: ~w(.jpg .jpeg .png .gif .webp),
             max_entries: max_entries,
@@ -84,6 +85,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:editing_object, nil)
           |> assign(:editing_title, false)
           |> assign(:access_stats, %{})
+          |> assign(:page_title, page_title_for_mode(tier_list.title, :view))
 
         {:ok, socket}
     end
@@ -116,6 +118,7 @@ defmodule RanksyWeb.TierListLive do
           |> assign(:editing_object, nil)
           |> assign(:editing_title, false)
           |> assign(:access_stats, %{})
+          |> assign(:page_title, page_title_for_mode(tier_list.title, :use))
 
         {:ok, socket}
     end
@@ -487,5 +490,15 @@ defmodule RanksyWeb.TierListLive do
       |> Keyword.get(:update_interval, 30_000)
 
     Process.send_after(self(), :update_access_times, update_interval)
+  end
+
+  defp page_title_for_mode(title, mode) do
+    mode_str = case mode do
+      :edit -> "(Edit)"
+      :use -> "(Use)"
+      :view -> "(View)"
+      _ -> ""
+    end
+    "#{title} #{mode_str} · Ranksy"
   end
 end
