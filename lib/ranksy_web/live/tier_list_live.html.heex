@@ -79,7 +79,7 @@
               <div class="object-name text-xs text-center mt-1 text-black truncate max-w-[80px] drop-shadow">
                 {object.name}
               </div>
-              <div class="object-image-preview hidden group-hover:flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px]" style="pointer-events: none;">
+              <div class="object-image-preview invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:visible hover:opacity-100 flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px] transition-opacity duration-100" style="pointer-events: auto;">
                 <img
                   src={~p"/images/#{object.id}"}
                   alt={object.name}
@@ -87,21 +87,21 @@
                   draggable="false"
                 />
                 <div class="text-black text-base font-semibold text-center max-w-[180px] truncate">{object.name}</div>
+                <div
+                  :if={@mode == :edit}
+                  class="absolute top-2 right-2 opacity-100"
+                  style="pointer-events: auto;"
+                >
+                  <button
+                    phx-click="edit_object"
+                    phx-value-object_id={object.id}
+                    class="btn btn-circle btn-xs btn-info"
+                    title="Edit object"
+                  >
+                    ✏️
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div
-              :if={@mode == :edit}
-              class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <button
-                phx-click="edit_object"
-                phx-value-object_id={object.id}
-                class="btn btn-circle btn-xs btn-info"
-                title="Edit object"
-              >
-                ✏️
-              </button>
             </div>
           </div>
         </div>
@@ -137,10 +137,10 @@
                 loading="lazy"
                 draggable="false"
               />
-              <div class="object-name text-xs text-center mt-1 text-black truncate max-w-[80px] drop-shadow">
+              <div class="object-name text-xs text-center mt-1 text-white truncate max-w-[80px] drop-shadow">
                 {object.name}
               </div>
-              <div class="object-image-preview hidden group-hover:flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px]" style="pointer-events: none;">
+              <div class="object-image-preview invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:visible hover:opacity-100 flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px] transition-opacity duration-100" style="pointer-events: auto;">
                 <img
                   src={~p"/images/#{object.id}"}
                   alt={object.name}
@@ -148,21 +148,21 @@
                   draggable="false"
                 />
                 <div class="text-black text-base font-semibold text-center max-w-[180px] truncate">{object.name}</div>
+                <div
+                  :if={@mode == :edit}
+                  class="absolute top-2 right-2 opacity-100"
+                  style="pointer-events: auto;"
+                >
+                  <button
+                    phx-click="edit_object"
+                    phx-value-object_id={object.id}
+                    class="btn btn-circle btn-xs btn-info"
+                    title="Edit object"
+                  >
+                    ✏️
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div
-              :if={@mode == :edit}
-              class="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <button
-                phx-click="edit_object"
-                phx-value-object_id={object.id}
-                class="btn btn-circle btn-xs btn-info"
-                title="Edit object"
-              >
-                ✏️
-              </button>
             </div>
           </div>
         </div>
