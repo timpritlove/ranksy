@@ -8,16 +8,18 @@
         phx-click-away="cancel_edit_title"
         class="inline-block"
       >
-        <input
-          type="text"
+        <textarea
+          id="tier-list-title-edit"
           name="title"
-          value={@tier_list.title}
-          class="text-6xl font-bold text-base-content mb-4 input input-bordered input-lg text-center min-w-[300px]"
+          phx-hook="AutoResizeTextarea"
+          class="text-6xl font-bold text-base-content mb-4 input input-bordered input-lg text-center min-w-[300px] max-w-[900px] w-auto resize-none overflow-hidden"
           autofocus
           phx-key="Escape"
           phx-keyup="cancel_edit_title"
           required
-        />
+          style="height: auto; min-height: 72px;"
+          rows="1"
+        >{@tier_list.title}</textarea>
       </form>
       <h1
         :if={not (@mode == :edit and @editing_title)}

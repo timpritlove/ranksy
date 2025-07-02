@@ -29,10 +29,12 @@ import "../vendor/daisyui-theme"
 // Import hooks
 import TierListDragDrop from "./hooks/tier_list_drag_drop"
 import FileDropZone from "./hooks/file_drop_zone"
+import AutoResizeTextarea from "./hooks/auto_resize_textarea"
 
 let Hooks = {
   TierListDragDrop: TierListDragDrop,
-  FileDropZone: FileDropZone
+  FileDropZone: FileDropZone,
+  AutoResizeTextarea: AutoResizeTextarea
 }
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
