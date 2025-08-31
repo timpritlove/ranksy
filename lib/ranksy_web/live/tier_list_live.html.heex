@@ -81,14 +81,19 @@
               <div class="object-name text-xs text-center mt-1 text-black truncate max-w-[80px] drop-shadow">
                 {object.name}
               </div>
-              <div class="object-image-preview invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:visible hover:opacity-100 flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px] transition-opacity duration-100" style="pointer-events: auto;">
+              <div
+                class="object-image-preview invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:visible hover:opacity-100 flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px] transition-opacity duration-100"
+                style="pointer-events: auto;"
+              >
                 <img
                   src={~p"/images/#{object.id}"}
                   alt={object.name}
                   class="w-40 h-40 object-cover rounded-lg mb-2"
                   draggable="false"
                 />
-                <div class="text-black text-base font-semibold text-center max-w-[180px] truncate">{object.name}</div>
+                <div class="text-black text-base font-semibold text-center max-w-[180px] truncate">
+                  {object.name}
+                </div>
                 <div
                   :if={@mode == :edit}
                   class="absolute top-2 right-2 opacity-100"
@@ -142,14 +147,19 @@
               <div class="object-name text-xs text-center mt-1 text-white truncate max-w-[80px] drop-shadow">
                 {object.name}
               </div>
-              <div class="object-image-preview invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:visible hover:opacity-100 flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px] transition-opacity duration-100" style="pointer-events: auto;">
+              <div
+                class="object-image-preview invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:visible hover:opacity-100 flex flex-col items-center justify-center absolute z-50 left-1/2 -translate-x-1/2 -top-4 md:-top-8 lg:-top-12 xl:-top-16 2xl:-top-20 p-2 bg-white border border-gray-300 rounded-lg shadow-xl min-w-[120px] min-h-[120px] max-w-[220px] max-h-[220px] transition-opacity duration-100"
+                style="pointer-events: auto;"
+              >
                 <img
                   src={~p"/images/#{object.id}"}
                   alt={object.name}
                   class="w-40 h-40 object-cover rounded-lg mb-2"
                   draggable="false"
                 />
-                <div class="text-black text-base font-semibold text-center max-w-[180px] truncate">{object.name}</div>
+                <div class="text-black text-base font-semibold text-center max-w-[180px] truncate">
+                  {object.name}
+                </div>
                 <div
                   :if={@mode == :edit}
                   class="absolute top-2 right-2 opacity-100"

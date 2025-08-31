@@ -493,12 +493,14 @@ defmodule RanksyWeb.TierListLive do
   end
 
   defp page_title_for_mode(title, mode) do
-    mode_str = case mode do
-      :edit -> "(Edit)"
-      :use -> "(Use)"
-      :view -> "(View)"
-      _ -> ""
-    end
+    mode_str =
+      case mode do
+        :edit -> "(Edit)"
+        :use -> "(Use)"
+        :view -> "(View)"
+        _ -> ""
+      end
+
     "#{title} #{mode_str} · Ranksy"
   end
 end
