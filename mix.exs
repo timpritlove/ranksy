@@ -61,7 +61,8 @@ defmodule Ranksy.MixProject do
       {:bandit, "~> 1.5"},
       {:image, "~> 0.59"},
       {:ex_cldr, "~> 2.40"},
-      {:ex_cldr_dates_times, "~> 2.19"}
+      {:ex_cldr_dates_times, "~> 2.19"},
+      {:igniter, "~> 0.6", only: [:dev, :test]}
     ]
   end
 
